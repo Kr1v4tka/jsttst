@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Planet Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            cursor: pointer;
+        }
+
+        .value-display {
+            font-size: 12px;
+            color: #00ff88;
+            margin-top: 3px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: white;
+            outline: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="controls">
+        <h1>🪐 Planet Generator</h1>
+        
+        <div class="control-group">
+            <label>Planet Type</label>
+            <select id="planetType">
+                <option value="terrestrial">Terrestrial</option>
+                <option value="gas_giant">Gas Giant</option>
+                <option value="ice">Ice Planet</option>
+                <option value="volcanic">Volcanic</option>
+                <option value="desert">Desert</option>
+                <option value="ocean">Ocean World</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Size</label>
+            <input type="range" id="size" min="1" max="5" step="0.1" value="2">
+            <div class="value-display" id="sizeValue">2.0</div>
+        </div>
+
+        <div class="control-group">
+            <label>Terrain Detail</label>
+            <input type="range" id="detail" min="1" max="10" step="1" value="5">
+            <div class="value-display" id="detailValue">5</div>
+        </div>
+
+        <div class="control-group">
+            <label>Water Level</label>
+            <input type="range" id="water" min="0" max="100" step="1" value="30">
+            <div class="value-display" id="waterValue">30%</div>
+        </div>
+
+        <div class="control-group">
+            <label>Atmosphere Density</label>
+            <input type="range" id="atmosphere" min="0" max="100" step="1" value="50">
+            <div class="value-display" id="atmosphereValue">50%</div>
+        </div>
+
+        <div class="control-group">
+            <label>Rotation Speed</label>
+            <input type="range" id="rotation" min="0" max="100" step="1" value="30">
+            <div class="value-display" id="rotationValue">30%</div>
+        </div>
+
+        <button id="generateBtn">🔄 Generate New Planet</button>
+        <button id="randomizeBtn">🎲 Randomize All</button>
+    </div>
+
+    <div id="info">
+        Drag to rotate • Scroll to zoom • Right-click drag to pan
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Orbit Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 3;
+        controls.maxDistance = 20;
+
+        // Camera position
+        camera.position.z = 5;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        sunLight.position.set(5, 3, 5);
+        scene.add(sunLight);
+
+        const backLight = new THREE.DirectionalLight(0x4040ff, 0.3);
+        backLight.position.set(-5, -3, -5);
+        scene.add(backLight);
+
+        // Stars background
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.02,
+                transparent: true
+            });
+
+            const starsVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            return new THREE.Points(starsGeometry, starsMaterial);
+        }
+
+        scene.add(createStars());
+
+        // Planet variables
+        let planet = null;
+        let atmosphere = null;
+        let rings = null;
+
+        // Noise function for terrain generation
+        function noise(x, y, z, frequency = 1, octaves = 5) {
+            let value = 0;
+            let amplitude = 1;
+            let totalAmplitude = 0;
+
+            for (let i = 0; i < octaves; i++) {
+                value += Math.sin(x * frequency + i) * 
+                         Math.cos(y * frequency + i) * 
+                         Math.sin(z * frequency + i) * amplitude;
+                frequency *= 2;
+                amplitude *= 0.5;
+                totalAmplitude += amplitude;
+            }
+
+            return value / totalAmplitude;
+        }
+
+        // Create planet geometry with displacement
+        function createPlanetGeometry(detail, size) {
+            const segments = 64 * detail;
+            const geometry = new THREE.SphereGeometry(size, segments, segments);
+            
+            const positions = geometry.attributes.position.array;
+            const colors = [];
+            const normals = geometry.attributes.normal.array;
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = positions[i];
+                const y = positions[i + 1];
+                const z = positions[i + 2];
+
+                // Normalize for noise calculation
+                const nx = x / size;
+                const ny = y / size;
+                const nz = z / size;
+
+                // Multi-octave noise for terrain
+                const n1 = noise(nx, ny, nz, 2, 4);
+                const n2 = noise(nx, ny, nz, 5, 3);
+                const n3 = noise(nx, ny, nz, 10, 2);
+                
+                const displacement = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * (0.1 * size);
+                
+                positions[i] = x + nx * displacement;
+                positions[i + 1] = y + ny * displacement;
+                positions[i + 2] = z + nz * displacement;
+            }
+
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        // Create planet material based on type
+        function createPlanetMaterial(type, waterLevel) {
+            const colors = {
+                terrestrial: { land: [0.2, 0.6, 0.2], water: [0.1, 0.3, 0.8], mountain: [0.5, 0.4, 0.3] },
+                gas_giant: { primary: [0.8, 0.6, 0.4], secondary: [0.6, 0.4, 0.8], bands: [0.9, 0.7, 0.5] },
+                ice: { surface: [0.8, 0.9, 1.0], ice: [0.6, 0.8, 0.9] },
+                volcanic: { lava: [1.0, 0.3, 0.1], rock: [0.2, 0.2, 0.2], ash: [0.3, 0.3, 0.3] },
+                desert: { sand: [0.9, 0.8, 0.6], rock: [0.6, 0.5, 0.4], canyon: [0.5, 0.4, 0.3] },
+                ocean: { deep: [0.0, 0.1, 0.4], shallow: [0.0, 0.4, 0.6], reef: [0.2, 0.8, 0.6] }
+            };
+
+            const palette = colors[type] || colors.terrestrial;
+
+            return new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.8,
+                metalness: 0.1,
+                flatShading: false,
+                vertexColors: true
+            });
+        }
+
+        // Color vertices based on height and type
+        function colorVertices(geometry, type, waterLevel) {
+            const positions = geometry.attributes.position.array;
+            const normals = geometry.attributes.normal.array;
+            const colors = [];
+
+            const colorPalettes = {
+                terrestrial: {
+                    deepWater: [0.0, 0.0, 0.3],
+                    water: [0.1, 0.3, 0.8],
+                    beach: [0.9, 0.8, 0.6],
+                    land: [0.2, 0.6, 0.2],
+                    forest: [0.1, 0.4, 0.1],
+                    mountain: [0.5, 0.4, 0.3],
+                    snow: [1.0, 1.0, 1.0]
+                },
+                gas_giant: {
+                    band1: [0.8, 0.6, 0.4],
+                    band2: [0.6, 0.4, 0.8],
+                    band3: [0.9, 0.7, 0.5],
+                    band4: [0.5, 0.3, 0.6],
+                    spot: [0.8, 0.3, 0.2]
+                },
+                ice: {
+                    ice: [0.8, 0.9, 1.0],
+                    snow: [1.0, 1.0, 1.0],
+                    water: [0.2, 0.4, 0.6],
+                    rock: [0.4, 0.4, 0.5]
+                },
+                volcanic: {
+                    rock: [0.2, 0.2, 0.2],
+                    lava: [1.0, 0.3, 0.1],
+                    ash: [0.3, 0.3, 0.3],
+                    glow: [1.0, 0.5, 0.2]
+                },
+                desert: {
+                    sand: [0.9, 0.8, 0.6],
+                    dune: [0.8, 0.7, 0.5],
+                    rock: [0.6, 0.5, 0.4],
+                    canyon: [0.5, 0.4, 0.3]
+                },
+                ocean: {
+                    deep: [0.0, 0.1, 0.4],
+                    medium: [0.0, 0.3, 0.6],
+                    shallow: [0.0, 0.5, 0.8],
+                    reef: [0.2, 0.8, 0.6],
+                    island: [0.2, 0.6, 0.2]
+                }
+            };
+
+            const palette = colorPalettes[type] || colorPalettes.terrestrial;
+            const keys = Object.keys(palette);
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = positions[i];
+                const y = positions[i + 1];
+                const z = positions[i + 2];
+                
+                // Calculate height from center (normalized)
+                const distance = Math.sqrt(x*x + y*y + z*z);
+                const height = (distance - 1) * 10; // Scale height
+                
+                // Use latitude for banding on gas giants
+                const latitude = Math.asin(y / distance);
+                
+                let color;
+                
+                if (type === 'gas_giant') {
+                    // Create bands for gas giant
+                    const bandIndex = Math.floor((latitude + Math.PI/2) / Math.PI * 4) % 4;
+                    const bandKey = `band${bandIndex + 1}`;
+                    color = palette[bandKey] || palette.band1;
+                    
+                    // Add some variation
+                    const variation = Math.sin(latitude * 10 + x) * 0.1;
+                    color = color.map(c => Math.max(0, Math.min(1, c + variation)));
+                } else if (type === 'volcanic') {
+                    // Random lava patches
+                    const lavaNoise = noise(x, y, z, 3, 2);
+                    if (lavaNoise > 0.6) {
+                        color = palette.lava;
+                    } else if (lavaNoise > 0.3) {
+                        color = palette.glow;
+                    } else {
+                        color = palette.rock;
+                    }
+                } else if (type === 'ocean') {
+                    if (height < -0.5) {
+                        color = palette.deep;
+                    } else if (height < 0) {
+                        color = palette.medium;
+                    } else if (height < 0.3) {
+                        color = palette.shallow;
+                    } else if (height < 0.5) {
+                        color = palette.reef;
+                    } else {
+                        color = palette.island;
+                    }
+                } else {
+                    // Standard terrain coloring
+                    const waterThreshold = (waterLevel - 50) / 100;
+                    
+                    if (height < waterThreshold - 0.2) {
+                        color = palette.deepWater || palette.water;
+                    } else if (height < waterThreshold) {
+                        color = palette.water;
+                    } else if (height < waterThreshold + 0.1) {
+                        color = palette.beach;
+                    } else if (height < waterThreshold + 0.4) {
+                        color = height > waterThreshold + 0.2 ? palette.forest : palette.land;
+                    } else if (height < waterThreshold + 0.7) {
+                        color = palette.mountain;
+                    } else {
+                        color = palette.snow;
+                    }
+                }
+
+                colors.push(...color);
+            }
+
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        }
+
+        // Create atmosphere
+        function createAtmosphere(size, density) {
+            if (atmosphere) {
+                scene.remove(atmosphere);
+                atmosphere.geometry.dispose();
+                atmosphere.material.dispose();
+            }
+
+            if (density <= 0) return;
+
+            const atmGeometry = new THREE.SphereGeometry(size * 1.2, 64, 64);
+            const atmMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    viewVector: { value: camera.position }
+                },
+                vertexShader: `
+                    uniform vec3 viewVector;
+                    varying float intensity;
+                    void main() {
+                        vec3 vNormal = normalize(normalMatrix * normal);
+                        vec3 vNormel = normalize(normalMatrix * viewVector);
+                        intensity = pow(0.7 - dot(vNormal, vNormel), 2.0);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying float intensity;
+                    uniform vec3 diffuse;
+                    void main() {
+                        vec3 glow = diffuse * intensity;
+                        gl_FragColor = vec4(glow, intensity);
+                    }
+                `,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false,
+                diffuse: new THREE.Color(0x40a8ff)
+            });
+
+            atmosphere = new THREE.Mesh(atmGeometry, atmMaterial);
+            atmosphere.scale.setScalar(1 + (density / 200));
+            scene.add(atmosphere);
+        }
+
+        // Create rings (for gas giants)
+        function createRings(size) {
+            if (rings) {
+                scene.remove(rings);
+                rings.geometry.dispose();
+                rings.material.dispose();
+            }
+
+            const innerRadius = size * 1.4;
+            const outerRadius = size * 2.2;
+            const segments = 128;
+
+            const ringGeometry = new THREE.RingGeometry(innerRadius, outerRadius, segments);
+            
+            // Create gradient texture for rings
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 512, 0);
+            gradient.addColorStop(0, 'rgba(180, 160, 140, 0)');
+            gradient.addColorStop(0.2, 'rgba(180, 160, 140, 0.8)');
+            gradient.addColorStop(0.4, 'rgba(160, 140, 120, 0.4)');
+            gradient.addColorStop(0.6, 'rgba(180, 160, 140, 0.6)');
+            gradient.addColorStop(0.8, 'rgba(140, 120, 100, 0.3)');
+            gradient.addColorStop(1, 'rgba(180, 160, 140, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 64);
+
+            const ringTexture = new THREE.CanvasTexture(canvas);
+            
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                map: ringTexture,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            rings = new THREE.Mesh(ringGeometry, ringMaterial);
+            rings.rotation.x = Math.PI / 2;
+            rings.rotation.y = 0.3;
+            scene.add(rings);
+        }
+
+        // Generate planet
+        function generatePlanet() {
+            // Remove existing planet
+            if (planet) {
+                scene.remove(planet);
+                planet.geometry.dispose();
+                planet.material.dispose();
+            }
+
+            // Get parameters
+            const type = document.getElementById('planetType').value;
+            const size = parseFloat(document.getElementById('size').value);
+            const detail = parseInt(document.getElementById('detail').value);
+            const waterLevel = parseInt(document.getElementById('water').value);
+            const atmosphereDensity = parseInt(document.getElementById('atmosphere').value);
+
+            // Create geometry
+            const geometry = createPlanetGeometry(detail, size);
+            
+            // Color vertices
+            colorVertices(geometry, type, waterLevel);
+            
+            // Create material
+            const material = createPlanetMaterial(type, waterLevel);
+            material.vertexColors = true;
+
+            // Create mesh
+            planet = new THREE.Mesh(geometry, material);
+            scene.add(planet);
+
+            // Create atmosphere
+            createAtmosphere(size, atmosphereDensity);
+
+            // Create rings for gas giants
+            if (type === 'gas_giant' && atmosphereDensity > 30) {
+                createRings(size);
+            } else if (rings) {
+                scene.remove(rings);
+                rings = null;
+            }
+        }
+
+        // Randomize all parameters
+        function randomizeAll() {
+            const types = ['terrestrial', 'gas_giant', 'ice', 'volcanic', 'desert', 'ocean'];
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            
+            document.getElementById('planetType').value = randomType;
+            document.getElementById('size').value = (Math.random() * 4 + 1).toFixed(1);
+            document.getElementById('detail').value = Math.floor(Math.random() * 10) + 1;
+            document.getElementById('water').value = Math.floor(Math.random() * 100);
+            document.getElementById('atmosphere').value = Math.floor(Math.random() * 100);
+            document.getElementById('rotation').value = Math.floor(Math.random() * 100);
+
+            updateDisplays();
+            generatePlanet();
+        }
+
+        // Update value displays
+        function updateDisplays() {
+            document.getElementById('sizeValue').textContent = document.getElementById('size').value;
+            document.getElementById('detailValue').textContent = document.getElementById('detail').value;
+            document.getElementById('waterValue').textContent = document.getElementById('water').value + '%';
+            document.getElementById('atmosphereValue').textContent = document.getElementById('atmosphere').value + '%';
+            document.getElementById('rotationValue').textContent = document.getElementById('rotation').value + '%';
+        }
+
+        // Event listeners
+        document.getElementById('generateBtn').addEventListener('click', generatePlanet);
+        document.getElementById('randomizeBtn').addEventListener('click', randomizeAll);
+
+        ['size', 'detail', 'water', 'atmosphere', 'rotation'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                updateDisplays();
+                if (id !== 'rotation') {
+                    generatePlanet();
+                }
+            });
+        });
+
+        document.getElementById('planetType').addEventListener('change', generatePlanet);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (planet) {
+                const rotationSpeed = parseInt(document.getElementById('rotation').value) / 1000;
+                planet.rotation.y += rotationSpeed;
+            }
+
+            if (rings) {
+                rings.rotation.y += 0.001;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Initialize
+        updateDisplays();
+        generatePlanet();
+        animate();
+    </script>
+</body>
+</html>
