@@ -107,6 +107,13 @@
     </div>
     
     <script src="physics.js"></script>
+    <script>
+        // Делаем функции доступными глобально для main.js
+        window.createCircle = createCircle;
+        window.createRectangle = createRectangle;
+        window.Vector2 = Vector2;
+        window.PhysicsEngine = PhysicsEngine;
+    </script>
     <script src="main.js"></script>
 </body>
 </html>
