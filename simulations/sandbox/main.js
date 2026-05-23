@@ -1,15 +1,18 @@
 /**
  * Основная логика симуляции песочницы
+ * Расширенная версия с поддержкой нового физического движка
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
+    // Устанавливаем размер канваса
+    canvas.width = 800;
+    canvas.height = 500;
+    
     // Инициализация физического движка
-    const physics = new PhysicsEngine(9.8, 0.7);
-    physics.width = canvas.width;
-    physics.height = canvas.height;
+    const physics = new PhysicsEngine(canvas.width, canvas.height, 9.8, 0.7);
     
     // Элементы управления
     const addBallBtn = document.getElementById('addBall');
@@ -22,13 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Обновление значений слайдеров
     gravitySlider.addEventListener('input', () => {
-        physics.gravity = parseFloat(gravitySlider.value);
-        gravityValue.textContent = physics.gravity.toFixed(1);
+        const value = parseFloat(gravitySlider.value);
+        physics.gravity = new Vector2(0, value);
+        gravityValue.textContent = value.toFixed(1);
     });
     
     bounceSlider.addEventListener('input', () => {
-        physics.bounce = parseFloat(bounceSlider.value);
-        bounceValue.textContent = physics.bounce.toFixed(2);
+        const value = parseFloat(bounceSlider.value);
+        physics.bounce = value;
+        bounceValue.textContent = value.toFixed(2);
+        
+        // Обновляем restitution у всех объектов
+        physics.objects.forEach(obj => {
+            obj.restitution = value;
+        });
     });
     
     // Обработчики кнопок
@@ -36,7 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const x = Math.random() * (canvas.width - 100) + 50;
         const y = Math.random() * 100 + 50;
         const radius = Math.random() * 20 + 15;
-        physics.addObject(createBall(x, y, radius));
+        const circle = createCircle(x, y, radius);
+        // Добавляем начальную скорость
+        circle.velocity = new Vector2((Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100);
+        physics.addObject(circle);
     });
     
     addBoxBtn.addEventListener('click', () => {
@@ -44,7 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = Math.random() * 100 + 50;
         const width = Math.random() * 30 + 30;
         const height = Math.random() * 30 + 30;
-        physics.addObject(createBox(x, y, width, height));
+        const rect = createRectangle(x, y, width, height);
+        // Добавляем начальную скорость и вращение
+        rect.velocity = new Vector2((Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100);
+        rect.angularVelocity = (Math.random() - 0.5) * 5;
+        physics.addObject(rect);
     });
     
     clearBtn.addEventListener('click', () => {
@@ -65,6 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.button === 2) { // Правый клик - удаление
             const obj = physics.findObjectAt(x, y);
             if (obj) {
+                // Создаем эффект взрыва частиц при удалении
+                physics.spawnParticles(obj.position.x, obj.position.y, 10, obj.color);
                 physics.removeObject(obj.id);
             }
             e.preventDefault();
@@ -75,11 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 draggedObject = obj;
                 lastMouseX = x;
                 lastMouseY = y;
-                obj.vx = 0;
-                obj.vy = 0;
+                obj.velocity = Vector2.zero();
+                obj.angularVelocity = 0;
+                obj.wakeUp();
             } else {
-                // Добавляем шар в позицию клика
-                physics.addObject(createBall(x, y, 20));
+                // Добавляем круг в позицию клика
+                const circle = createCircle(x, y, 20);
+                physics.addObject(circle);
             }
         }
     });
@@ -93,10 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const dx = x - lastMouseX;
             const dy = y - lastMouseY;
             
-            draggedObject.x = x;
-            draggedObject.y = y;
-            draggedObject.vx = dx * 2;
-            draggedObject.vy = dy * 2;
+            draggedObject.position.x = x;
+            draggedObject.position.y = y;
+            draggedObject.velocity = new Vector2(dx * 60, dy * 60);
             
             lastMouseX = x;
             lastMouseY = y;
@@ -108,74 +128,73 @@ document.addEventListener('DOMContentLoaded', () => {
         draggedObject = null;
     });
     
+    canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+        draggedObject = null;
+    });
+    
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     
-    // Отрисовка
-    function render() {
+    // Отрисовка фона и сетки
+    function renderBackground() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // Градиентный фон
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#f5f7fa');
+        gradient.addColorStop(1, '#c3cfe2');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         // Рисуем сетку
-        ctx.strokeStyle = '#e0e0e0';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 50) {
+        const gridSize = 50;
+        
+        for (let x = 0; x < canvas.width; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, canvas.height);
             ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 50) {
+        for (let y = 0; y < canvas.height; y += gridSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(canvas.width, y);
             ctx.stroke();
         }
         
-        // Рисуем объекты
-        physics.objects.forEach(obj => {
-            ctx.fillStyle = obj.color;
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            
-            if (obj.type === 'ball') {
-                ctx.beginPath();
-                ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                
-                // Индикатор вращения
-                ctx.beginPath();
-                ctx.moveTo(obj.x, obj.y);
-                ctx.lineTo(
-                    obj.x + Math.cos(obj.angle) * obj.radius,
-                    obj.y + Math.sin(obj.angle) * obj.radius
-                );
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.stroke();
-            } else if (obj.type === 'box') {
-                ctx.save();
-                ctx.translate(obj.x, obj.y);
-                ctx.rotate(obj.angle);
-                ctx.fillRect(-obj.width / 2, -obj.height / 2, obj.width, obj.height);
-                ctx.strokeRect(-obj.width / 2, -obj.height / 2, obj.width, obj.height);
-                ctx.restore();
-            }
-        });
-        
-        // Информация об объектах
-        ctx.fillStyle = '#333';
-        ctx.font = '14px Arial';
-        ctx.fillText(`Объектов: ${physics.objects.length}`, 10, 20);
+        // Рисуем границы
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+    }
+    
+    // Отрисовка информации
+    function renderInfo() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.font = '14px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(`Объектов: ${physics.objects.length}`, 10, 25);
+        ctx.fillText(`Частиц: ${physics.particles.length}`, 10, 45);
+        ctx.fillText(`FPS: ${Math.round(1000 / (lastFrameTime || 16))}`, 10, 65);
     }
     
     // Игровой цикл
     let lastTime = performance.now();
+    let lastFrameTime = 16;
     
     function gameLoop(currentTime) {
-        const deltaTime = currentTime - lastTime;
+        const deltaTime = (currentTime - lastTime) / 1000; // Конвертируем в секунды
         lastTime = currentTime;
+        lastFrameTime = deltaTime * 1000;
         
+        // Обновляем физику
         physics.update(deltaTime);
-        render();
+        
+        // Рендерим
+        renderBackground();
+        physics.draw(ctx);
+        renderInfo();
         
         requestAnimationFrame(gameLoop);
     }
