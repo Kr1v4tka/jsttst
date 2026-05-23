@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Песочница с физикой</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        .sandbox-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        #canvas {
+            border: 1px solid #ccc;
+            background-color: #f5f5f5;
+            cursor: crosshair;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button.clear {
+            background-color: #f44336;
+        }
+        
+        button.clear:hover {
+            background-color: #da190b;
+        }
+        
+        label {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        input[type="range"] {
+            width: 100px;
+        }
+        
+        .info {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sandbox-container">
+        <h1>Песочница с физикой</h1>
+        
+        <div class="controls">
+            <button id="addBall">Добавить шар</button>
+            <button id="addBox">Добавить коробку</button>
+            <button id="clear" class="clear">Очистить</button>
+            
+            <div class="control-group">
+                <label for="gravity">Гравитация:</label>
+                <input type="range" id="gravity" min="0" max="20" value="9.8" step="0.1">
+                <span id="gravityValue">9.8</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="bounce">Отскок:</label>
+                <input type="range" id="bounce" min="0" max="1" value="0.7" step="0.05">
+                <span id="bounceValue">0.7</span>
+            </div>
+        </div>
+        
+        <canvas id="canvas" width="800" height="500"></canvas>
+        
+        <div class="info">
+            <p>Левый клик: добавить объект | Правый клик: удалить ближайший объект | Перетаскивание: перемещение объектов</p>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="../../index.html" style="color: #2196F3; text-decoration: none;">← Вернуться к списку симуляций</a>
+        </div>
+    </div>
+    
+    <script src="physics.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
