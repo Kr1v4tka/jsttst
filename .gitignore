@@ -1,3 +1,4 @@
+```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
@@ -6,29 +7,13 @@ __pycache__/
 dist/
 build/
 target/
-*.class
-*.exe
-*.dll
-*.so
-*.a
-*.out
 
 # Dependencies
 .venv/
 venv/
-.env
-.env.local
-.env.*
 node_modules/
 .julia/
-zig*/
-.jupyter/
-.ipython/
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage/
-htmlcov/
+.zig-cache/
 
 # Logs and temp files
 *.log
@@ -36,13 +21,23 @@ htmlcov/
 *.swp
 *.swo
 
+# Environment
+.env
+.env.local
+.env.*
+
 # Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# System files
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# OS generated
 .DS_Store
 Thumbs.db
 
@@ -69,3 +64,4 @@ Thumbs.db
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+```
