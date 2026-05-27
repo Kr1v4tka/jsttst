@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stereo Depth Estimator - Windows 98</title>
+<link href="https://fonts.googleapis.com/css2?family=Tahoma:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --win-bg: #c0c0c0; --win-text: #000000; --win-highlight: #000080;
+    --win-light: #dfdfdf; --win-dark: #808080; --win-darker: #404040;
+    --win-desktop: #008080; --win-title-active: linear-gradient(90deg, #000080, #1084d0);
+    --win-btn-face: #c0c0c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, 'MS Sans Serif', sans-serif; font-size: 11px; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--win-desktop); color: var(--win-text); overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
+
+  /* Win98 Рельеф */
+  .raised { border-top: 2px solid var(--win-light); border-left: 2px solid var(--win-light); border-right: 2px solid var(--win-darker); border-bottom: 2px solid var(--win-darker); box-shadow: inset -1px -1px 0 var(--win-dark), inset 1px 1px 0 #fff; }
+  .inset { border-top: 2px solid var(--win-darker); border-left: 2px solid var(--win-darker); border-right: 2px solid var(--win-light); border-bottom: 2px solid var(--win-light); box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 var(--win-dark); }
+
+  /* Окно Win98 */
+  .win98-window { background: var(--win-bg); display: flex; flex-direction: column; position: relative; }
+  .win98-titlebar { background: var(--win-title-active); color: #fff; font-weight: 700; padding: 2px 3px; display: flex; align-items: center; justify-content: space-between; user-select: none; height: 20px; min-height: 20px; }
+  .win98-titlebar-text { margin-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .win98-titlebar-controls { display: flex; gap: 2px; }
+  .win98-titlebar-btn { width: 16px; height: 14px; background: var(--win-btn-face); border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; line-height: 1; cursor: pointer; padding: 0; color: #000; }
+  .win98-titlebar-btn:active { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; }
+  .win98-window-body { padding: 4px; overflow-y: auto; flex: 1; }
+
+  /* Кнопки */
+  .btn-98 { background: var(--win-btn-face); border-top: 2px solid #fff; border-left: 2px solid #fff; border-right: 2px solid #000; border-bottom: 2px solid #000; box-shadow: inset -1px -1px 0 var(--win-dark), inset 1px 1px 0 var(--win-light); padding: 4px 12px; cursor: pointer; font-family: inherit; font-size: 11px; min-height: 23px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; outline: none; touch-action: manipulation; }
+  .btn-98:active { border-top: 2px solid #000; border-left: 2px solid #000; border-right: 2px solid #fff; border-bottom: 2px solid #fff; box-shadow: inset 1px 1px 0 var(--win-dark); padding: 5px 11px 3px 13px; }
+  .btn-98:disabled { color: var(--win-dark); text-shadow: 1px 1px 0 #fff; cursor: not-allowed; }
+  .btn-98-primary { font-weight: bold; outline: 1px solid #000; outline-offset: -1px; }
+
+  /* Табы Win98 */
+  .tabs-98 { display: flex; border-bottom: 2px solid var(--win-bg); padding: 0 4px; background: var(--win-bg); }
+  .tab-98 { background: var(--win-bg); border-top: 2px solid #fff; border-left: 2px solid #fff; border-right: 2px solid #000; border-bottom: 2px solid var(--win-bg); padding: 4px 12px; cursor: pointer; margin-bottom: -2px; position: relative; z-index: 1; touch-action: manipulation; font-weight: normal; }
+  .tab-98.active { border-bottom-color: var(--win-bg); z-index: 2; font-weight: bold; padding-bottom: 6px; margin-top: -2px; }
+  .tab-98:not(.active) { background: linear-gradient(180deg, #c0c0c0 0%, #b0b0b0 100%); }
+
+  .tab-content { display: none; background: var(--win-bg); flex: 1; position: relative; overflow: hidden; border-top: 2px solid var(--win-bg); }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  /* Поля ввода */
+  .select-98, .input-98 { background: #fff; border-top: 2px solid var(--win-dark); border-left: 2px solid var(--win-dark); border-right: 2px solid #fff; border-bottom: 2px solid #fff; box-shadow: inset -1px -1px 0 var(--win-light), inset 1px 1px 0 var(--win-darker); padding: 2px 4px; font-family: inherit; font-size: 11px; height: 20px; outline: none; width: 100%; }
+
+  input[type="range"] { -webkit-appearance: none; background: transparent; width: 100%; height: 20px; cursor: pointer; }
+  input[type="range"]::-webkit-slider-track { height: 4px; background: var(--win-dark); border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 21px; background: var(--win-btn-face); border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; margin-top: -9px; }
+  
+  .checkbox-98 { appearance: auto; }
+
+  /* Прогресс бар */
+  .progress-98 { height: 20px; background: #fff; border-top: 2px solid var(--win-dark); border-left: 2px solid var(--win-dark); border-right: 2px solid #fff; border-bottom: 2px solid #fff; padding: 2px; }
+  .progress-98-fill { height: 100%; background: repeating-linear-gradient(90deg, #000080 0px, #000080 10px, #fff 10px, #fff 12px); transition: width 0.2s; }
+
+  /* Dropzone */
+  .dropzone-98 { background: #fff; border-top: 2px solid var(--win-dark); border-left: 2px solid var(--win-dark); border-right: 2px solid #fff; border-bottom: 2px solid #fff; padding: 10px; text-align: center; cursor: pointer; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: manipulation; overflow: hidden; }
+  .dropzone-98 img { max-width: 100%; max-height: 60px; object-fit: contain; margin-bottom: 4px; }
+
+  .viewer-3d-container { flex: 1; background: #000; position: relative; touch-action: none; }
+
+  .param-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .param-label { font-size: 11px; }
+  .param-value { font-size: 11px; font-weight: bold; min-width: 24px; text-align: right; }
+  .group-box { border: 1px solid var(--win-dark); padding: 8px; margin-bottom: 8px; position: relative; margin-top: 10px; }
+  .group-box-title { position: absolute; top: -8px; left: 8px; background: var(--win-bg); padding: 0 4px; font-weight: bold; font-size: 11px; }
+
+  /* Таскбар */
+  .taskbar { background: var(--win-bg); border-top: 2px solid #fff; height: 32px; display: flex; align-items: center; padding: 2px 4px; z-index: 100; }
+  .start-btn { background: var(--win-btn-face); border-top: 2px solid #fff; border-left: 2px solid #fff; border-right: 2px solid #000; border-bottom: 2px solid #000; padding: 2px 8px; font-weight: bold; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; height: 24px; }
+  .start-btn:active { border-top: 2px solid #000; border-left: 2px solid #000; border-right: 2px solid #fff; border-bottom: 2px solid #fff; }
+  .taskbar-clock { border-top: 1px solid var(--win-dark); border-left: 1px solid var(--win-dark); border-right: 1px solid #fff; border-bottom: 1px solid #fff; padding: 2px 8px; margin-left: auto; height: 22px; display: flex; align-items: center; }
+
+  /* Модальное окно справки */
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,128,0.3); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .help-content { line-height: 1.5; }
+  .help-content b { display: block; margin-top: 8px; color: #000080; }
+  .help-content ul { margin-left: 20px; margin-bottom: 8px; }
+
+  @media (max-width: 768px) {
+    .desktop-layout { flex-direction: column !important; }
+    .sidebar-98 { width: 100% !important; max-height: 45vh; border-right: none !important; border-bottom: 2px solid var(--win-light) !important; }
+  }
+
+  ::-webkit-scrollbar { width: 16px; }
+  ::-webkit-scrollbar-track { background: repeating-conic-gradient(#c0c0c0 0% 25%, #fff 0% 50%) 50% / 2px 2px; }
+  ::-webkit-scrollbar-thumb { background: var(--win-btn-face); border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; }
+  ::-webkit-scrollbar-button { background: var(--win-btn-face); border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; display: block; height: 16px; width: 16px; }
+</style>
+</head>
+<body>
+
+<div class="desktop-layout" style="flex:1; display:flex; flex-direction:row; overflow:hidden;">
+
+  <!-- Боковая панель -->
+  <aside class="sidebar-98 win98-window raised" style="width:320px; min-width:280px; display:flex; flex-direction:column; border-right:none;">
+    <div class="win98-titlebar">
+      <span class="win98-titlebar-text"><i class="fas fa-cog" style="margin-right:4px;"></i>Параметры вычисления</span>
+      <div class="win98-titlebar-controls">
+        <button class="win98-titlebar-btn" onclick="showHelp()" title="Справка">?</button>
+        <button class="win98-titlebar-btn" onclick="resetApp()" title="Сбросить">X</button>
+      </div>
+    </div>
+    <div class="win98-window-body inset" style="background:#fff;">
+      
+      <div class="group-box">
+        <div class="group-box-title">1. Изображения</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <div class="dropzone-98" id="dropLeft" tabindex="0">
+            <div id="placeholderLeft"><i class="fas fa-image"></i><br>Левое (Tap)</div>
+          </div>
+          <div class="dropzone-98" id="dropRight" tabindex="0">
+            <div id="placeholderRight"><i class="fas fa-image"></i><br>Правое (Tap)</div>
+          </div>
+        </div>
+        <input type="file" id="fileLeft" accept="image/*" hidden>
+        <input type="file" id="fileRight" accept="image/*" hidden>
+        <button class="btn-98" onclick="generateDemo()" style="width:100%; margin-top:6px;">
+          <i class="fas fa-wand-magic-sparkles"></i> Сгенерировать демо
+        </button>
+      </div>
+
+      <div class="group-box">
+        <div class="group-box-title">2. Алгоритм</div>
+        <div class="param-row"><span class="param-label">Метод:</span></div>
+        <select id="method" class="select-98" style="margin-bottom:6px;">
+          <option value="sad">SAD Block Matching</option>
+          <option value="census">Census Transform</option>
+        </select>
+        <div class="param-row"><span class="param-label">Макс. диспаратность:</span><span class="param-value" id="maxDispVal">64</span></div>
+        <input type="range" id="maxDisp" min="16" max="128" step="4" value="64">
+        <div class="param-row"><span class="param-label">Размер блока:</span><span class="param-value" id="blockSizeVal">7</span></div>
+        <input type="range" id="blockSize" min="3" max="21" step="2" value="7">
+        <div class="param-row"><span class="param-label">Масштаб обработки:</span><span class="param-value" id="scaleVal">1/4</span></div>
+        <input type="range" id="scale" min="1" max="4" step="1" value="4">
+      </div>
+
+      <div class="group-box">
+        <div class="group-box-title">3. Фильтрация</div>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="filterSubpixel" checked class="checkbox-98"> Субпиксельное уточнение</label>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="filterConsistency" class="checkbox-98"> LR-консистентность</label>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="filterMedian" checked class="checkbox-98"> Медианный фильтр</label>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="filterSpeckle" class="checkbox-98"> Удаление спеклов</label>
+      </div>
+
+      <div class="group-box">
+        <div class="group-box-title">4. 3D Визуализация</div>
+        <div class="param-row"><span class="param-label">Размер точки:</span><span class="param-value" id="pointSizeVal">2.0</span></div>
+        <input type="range" id="pointSize" min="0.5" max="6" step="0.5" value="2">
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="showWireframe" class="checkbox-98"> Wireframe (3D модель)</label>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="showAxes" checked class="checkbox-98"> Оси координат</label>
+        <label style="display:block; margin-bottom:4px; cursor:pointer; touch-action:manipulation;"><input type="checkbox" id="showGrid" class="checkbox-98"> Сетка</label>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn-98 btn-98-primary" id="btnCompute" onclick="startCompute()" style="width:100%; padding: 8px;">
+          <i class="fas fa-play"></i> Вычислить глубину
+        </button>
+        <div class="progress-98 raised" style="margin-top:8px;">
+          <div class="progress-98-fill" id="progressFill" style="width:0%;"></div>
+        </div>
+        <div id="computeStatus" style="text-align:center; font-size:11px; margin-top:4px; height:14px; overflow:hidden;">Ожидание...</div>
+      </div>
+
+      <div class="group-box">
+        <div class="group-box-title">5. Экспорт</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <button class="btn-98" onclick="exportPLY()" id="btnPly" disabled><i class="fas fa-cloud"></i> PLY</button>
+          <button class="btn-98" onclick="exportOBJ()" id="btnObj" disabled><i class="fas fa-cube"></i> OBJ</button>
+          <button class="btn-98" onclick="exportDepthMap()" id="btnDepth" disabled><i class="fas fa-map"></i> Глубина</button>
+          <button class="btn-98" onclick="exportDisparity()" id="btnDisp" disabled><i class="fas fa-chart-bar"></i> Дисп.</button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Основная область -->
+  <main class="win98-window raised" style="flex:1; display:flex; flex-direction:column; border-left:none;">
+    <div class="win98-titlebar">
+      <span class="win98-titlebar-text"><i class="fas fa-television" style="margin-right:4px;"></i>Просмотр результатов</span>
+      <div class="win98-titlebar-controls">
+        <button class="win98-titlebar-btn">_</button>
+        <button class="win98-titlebar-btn">□</button>
+        <button class="win98-titlebar-btn" onclick="resetApp()">X</button>
+      </div>
+    </div>
+    
+    <div class="tabs-98" role="tablist">
+      <div class="tab-98 active" data-tab="stereo" role="tab"><i class="fas fa-glasses"></i> Стерео</div>
+      <div class="tab-98" data-tab="depth" role="tab"><i class="fas fa-mountain"></i> Глубина</div>
+      <div class="tab-98" data-tab="pointcloud" role="tab"><i class="fas fa-cloud"></i> Точки</div>
+      <div class="tab-98" data-tab="model3d" role="tab"><i class="fas fa-cube"></i> 3D Модель</div>
+    </div>
+
+    <div style="flex:1; position:relative; background:#000; display:flex; flex-direction:column;">
+      <!-- Стерео -->
+      <div class="tab-content active" id="tab-stereo" style="background:var(--win-bg);">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; color:#000; background:#fff; position:relative;" id="stereoEmpty">
+          <p><i class="fas fa-glasses" style="font-size:24px; display:block; margin-bottom:8px; text-align:center;"></i>Загрузите стерео-пару или сгенерируйте демо</p>
+        </div>
+        <div class="viewer-3d-container" id="stereoContent" style="display:none; background:#fff;">
+          <canvas id="stereoCanvas" style="width:100%; height:100%; object-fit:contain; touch-action:auto;"></canvas>
+          <div style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); display:flex; gap:4px; background:var(--win-bg); padding:4px; border:1px solid #000;">
+            <button class="btn-98" onclick="setStereoMode('side')">Бок о бок</button>
+            <button class="btn-98" onclick="setStereoMode('anaglyph')">Анаглиф</button>
+            <button class="btn-98" onclick="setStereoMode('left')">Только L</button>
+            <button class="btn-98" onclick="setStereoMode('right')">Только R</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Карта глубины -->
+      <div class="tab-content" id="tab-depth" style="background:var(--win-bg);">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; color:#000; background:#fff; position:relative;" id="depthEmpty">
+          <p><i class="fas fa-mountain" style="font-size:24px; display:block; margin-bottom:8px; text-align:center;"></i>Вычислите глубину для отображения</p>
+        </div>
+        <div class="viewer-3d-container" id="depthContent" style="display:none; background:#fff;">
+          <canvas id="depthCanvas" style="width:100%; height:100%; object-fit:contain;"></canvas>
+          <div id="depthStats" style="position:absolute; top:8px; left:8px; background:var(--win-bg); padding:4px; border:1px solid #000; font-size:11px;"></div>
+        </div>
+      </div>
+
+      <!-- Облако точек -->
+      <div class="tab-content" id="tab-pointcloud">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; color:#000; background:var(--win-bg); position:relative;" id="pcEmpty">
+          <p><i class="fas fa-cloud" style="font-size:24px; display:block; margin-bottom:8px; text-align:center;"></i>Вычислите глубину для облака точек</p>
+        </div>
+        <div class="viewer-3d-container" id="pcContent" style="display:none;"></div>
+      </div>
+
+      <!-- 3D Модель -->
+      <div class="tab-content" id="tab-model3d">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; color:#000; background:var(--win-bg); position:relative;" id="modelEmpty">
+          <p><i class="fas fa-cube" style="font-size:24px; display:block; margin-bottom:8px; text-align:center;"></i>Вычислите глубину для 3D модели</p>
+        </div>
+        <div class="viewer-3d-container" id="modelContent" style="display:none;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Таскбар -->
+<div class="taskbar raised" style="z-index:9999;">
+  <button class="start-btn" onclick="showHelp()"><i class="fab fa-windows" style="font-size:14px; color:#000;"></i> Справка</button>
+  <div style="flex:1; margin:0 4px; border-top:1px solid #808080; border-left:1px solid #808080; border-right:1px solid #fff; border-bottom:1px solid #fff; height:22px; background:#fff; display:flex; align-items:center; padding:0 4px;">
+    <span style="font-size:11px;" id="taskbarStatus">Готово</span>
+  </div>
+  <div class="taskbar-clock" id="clock">00:00</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// Глобальное состояние
+// ============================================================
+const state = {
+  leftImg: null, rightImg: null, leftData: null, rightData: null,
+  leftGrey: null, rightGrey: null, imgWidth: 0, imgHeight: 0,
+  disparity: null, depth: null, disparityWidth: 0, disparityHeight: 0,
+  stereoMode: 'side', computing: false,
+  pcScene: null, pcCamera: null, pcRenderer: null, pcControls: null, pcAnimId: null,
+  modelScene: null, modelCamera: null, modelRenderer: null, modelControls: null, modelMaterial: null, modelAnimId: null,
+};
+
+// ============================================================
+// Утилиты UI
+// ============================================================
+function updateClock() { const d=new Date(); document.getElementById('clock').textContent=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+setInterval(updateClock, 1000); updateClock();
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = (pct * 100) + '%';
+  document.getElementById('taskbarStatus').textContent = pct >= 1 ? 'Готово' : `Вычисление: ${(pct*100).toFixed(0)}%`;
+}
+function yieldToUI() { return new Promise(r => setTimeout(r, 0)); }
+
+// ============================================================
+// Справка (Windows 98 Dialog)
+// ============================================================
+window.showHelp = function() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="win98-window raised" style="width:100%; max-width:500px;">
+      <div class="win98-titlebar">
+        <span class="win98-titlebar-text"><i class="fas fa-question-circle" style="margin-right:4px;"></i>Справка: Stereo Depth Estimator</span>
+        <div class="win98-titlebar-controls">
+          <button class="win98-titlebar-btn" onclick="this.closest('.modal-overlay').remove()">X</button>
+        </div>
+      </div>
+      <div class="win98-window-body inset" style="background:#fff; max-height:60vh; overflow-y:auto;">
+        <div class="help-content" style="padding: 10px;">
+          <p><b>Что делает эта программа?</b></p>
+          <p>Программа вычисляет карту глубины (3D-рельеф) из двух плоских фотографий (стерео-пары), снятых с небольшим смещением камеры. На основе глубины генерируется облако точек и 3D-модель.</p>
+          
+          <p><b>1. Загрузка изображений</b></p>
+          <ul>
+            <li><b>Левое / Правое:</b> Нажмите на белую область, чтобы выбрать фото из галереи устройства. Левое фото — снятое левее, правое — правее.</li>
+            <li><b>Демо:</b> Генерирует тестовую стерео-пару с цветными фигурами на разной глубине для проверки алгоритма.</li>
+          </ul>
+
+          <p><b>2. Алгоритм</b></p>
+          <ul>
+            <li><b>SAD Block Matching:</b> Быстрый метод, ищет похожие блоки пикселей по сумме абсолютных разностей. Подходит для текстурированных сцен.</li>
+            <li><b>Census Transform:</b> Более робастный метод, сравнивает структуру окрестности пикселя. Лучше работает при перепадах освещения, но медленнее.</li>
+            <li><b>Макс. диспаратность:</b> Максимальный горизонтальный сдвиг (в пикселях), который алгоритм будет искать. Чем ближе объекты — тем больше нужен сдвиг.</li>
+            <li><b>Размер блока:</b> Размер окна сопоставления. Нечетный. Больше блок — меньше шума, но хуже детализация.</li>
+            <li><b>Масштаб:</b> 1/1 — полное разрешение (очень медленно). 1/4 — рекомендуется для мобильных устройств.</li>
+          </ul>
+
+          <p><b>3. Фильтрация</b></p>
+          <ul>
+            <li><b>Субпиксельное уточнение:</b> Параболическая интерполяция для дробных значений глубины (сглаживает ступеньки).</li>
+            <li><b>LR-консистентность:</b> Отбрасывает пиксели, где обратный поиск не совпадает. Удаляет артефакты на границах окклюзий.</li>
+            <li><b>Медианный фильтр:</b> Убирает одиночные выбросы (соль/перец на карте глубины).</li>
+            <li><b>Удаление спеклов:</b> Удаляет мелкие изолированные островки неверной глубины.</li>
+          </ul>
+
+          <p><b>4. 3D Визуализация</b></p>
+          <ul>
+            <li><b>Управление (Мышь/Тач):</b> 1 палец/ЛКМ — вращение. 2 пальца/ПКМ — перемещение. Щипок/Колесо — масштаб.</li>
+            <li><b>Размер точки:</b> Для облака точек. Мелкие точки дают плотный вид, крупные — лучше видны издалека.</li>
+            <li><b>Wireframe:</b> Отображение 3D-модели в виде сетки без текстуры.</li>
+          </ul>
+
+          <p><b>5. Экспорт</b></p>
+          <ul>
+            <li><b>PLY:</b> Формат облака точек с цветами. Открывается в CloudCompare, MeshLab, Blender.</li>
+            <li><b>OBJ:</b> 3D-меш с текстурными координатами. Универсальный формат.</li>
+            <li><b>Глубина / Дисп.:</b> Сохраняет карты в формате PNG.</li>
+          </ul>
+          
+          <p><b>Кнопка X (Закрыть):</b> Полностью сбрасывает приложение, очищая оперативную и видеокарту память.</p>
+        </div>
+      </div>
+      <div style="padding: 8px; display: flex; justify-content: flex-end; border-top: 1px solid #808080;">
+        <button class="btn-98" onclick="this.closest('.modal-overlay').remove()" style="min-width: 75px;">OK</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+};
+
+// ============================================================
+// Сброс приложения (Кнопка X)
+// ============================================================
+window.resetApp = function() {
+  cleanup3D('pc');
+  cleanup3D('model');
+  
+  state.leftImg = null; state.rightImg = null; state.leftData = null; state.rightData = null;
+  state.leftGrey = null; state.rightGrey = null;
+  state.disparity = null; state.depth = null;
+
+  // Сброс UI
+  document.getElementById('placeholderLeft').innerHTML = '<i class="fas fa-image"></i><br>Левое (Tap)';
+  document.getElementById('placeholderRight').innerHTML = '<i class="fas fa-image"></i><br>Правое (Tap)';
+  document.getElementById('fileLeft').value = ''; document.getElementById('fileRight').value = '';
+  
+  document.getElementById('stereoEmpty').style.display = 'flex'; document.getElementById('stereoContent').style.display = 'none';
+  document.getElementById('depthEmpty').style.display = 'flex'; document.getElementById('depthContent').style.display = 'none';
+  document.getElementById('pcEmpty').style.display = 'flex'; document.getElementById('pcContent').style.display = 'none';
+  document.getElementById('modelEmpty').style.display = 'flex'; document.getElementById('modelContent').style.display = 'none';
+  
+  document.getElementById('btnPly').disabled = true; document.getElementById('btnObj').disabled = true;
+  document.getElementById('btnDepth').disabled = true; document.getElementById('btnDisp').disabled = true;
+  
+  document.getElementById('computeStatus').textContent = 'Ожидание...';
+  setProgress(0);
+  document.getElementById('taskbarStatus').textContent = 'Готово';
+};
+
+// ============================================================
+// Очистка памяти 3D сцен (Исправление лагов)
+// ============================================================
+function cleanup3D(type) {
+  const prefix = type === 'pc' ? 'pc' : 'model';
+  const scene = state[prefix+'Scene'];
+  const renderer = state[prefix+'Renderer'];
+  const controls = state[prefix+'Controls'];
+  const animId = state[prefix+'AnimId'];
+  const containerId = type === 'pc' ? 'pcContent' : 'modelContent';
+
+  if (animId) cancelAnimationFrame(animId);
+  state[prefix+'AnimId'] = null;
+
+  if (renderer) {
+    renderer.dispose();
+    renderer.forceContextLoss();
+    const canvas = renderer.domElement;
+    if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
+  }
+  state[prefix+'Renderer'] = null;
+
+  if (controls) controls.dispose();
+  state[prefix+'Controls'] = null;
+
+  if (scene) {
+    scene.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+        if (obj.material.map) obj.material.map.dispose();
+      }
+    });
+  }
+  state[prefix+'Scene'] = null;
+  state[prefix+'Camera'] = null;
+  state[prefix+'Material'] = null;
+
+  // Очищаем DOM контейнер
+  const container = document.getElementById(containerId);
+  if (container) container.innerHTML = '';
+}
+
+// ============================================================
+// Вкладки
+// ============================================================
+document.querySelectorAll('.tab-98').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab-98').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'pointcloud') resizePCViewer();
+    if (tab.dataset.tab === 'model3d') resizeModelViewer();
+  });
+});
+
+// ============================================================
+// Загрузка изображений
+// ============================================================
+function setupDropzone(dropId, fileId, side) {
+  const drop = document.getElementById(dropId);
+  const file = document.getElementById(fileId);
+  drop.addEventListener('click', () => file.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.background = '#ffffcc'; });
+  drop.addEventListener('dragleave', () => drop.style.background = '#fff');
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.style.background = '#fff'; if(e.dataTransfer.files[0])loadImage(e.dataTransfer.files[0],side);});
+  file.addEventListener('change', () => { if(file.files[0])loadImage(file.files[0],side);});
+}
+
+function loadImage(file, side) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      if(side==='left') state.leftImg=img; else state.rightImg=img;
+      updateDropPreview(side, img); updateStereoView();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateDropPreview(side, img) {
+  const placeholder = document.getElementById(side==='left'?'placeholderLeft':'placeholderRight');
+  const drop = document.getElementById(side==='left'?'dropLeft':'dropRight');
+  placeholder.innerHTML = '';
+  let preview = document.createElement('img');
+  preview.src = img.src;
+  drop.appendChild(preview);
+}
+
+setupDropzone('dropLeft', 'fileLeft', 'left');
+setupDropzone('dropRight', 'fileRight', 'right');
+
+// ============================================================
+// Генерация демо
+// ============================================================
+window.generateDemo = function() {
+  const W=640, H=480;
+  const lCanvas=document.createElement('canvas'); lCanvas.width=W; lCanvas.height=H;
+  const lCtx=lCanvas.getContext('2d');
+  const bgGrad=lCtx.createLinearGradient(0,0,W,H); bgGrad.addColorStop(0,'#1a1a2e'); bgGrad.addColorStop(1,'#0f3460');
+  lCtx.fillStyle=bgGrad; lCtx.fillRect(0,0,W,H);
+  const noiseData=lCtx.getImageData(0,0,W,H);
+  for(let i=0;i<noiseData.data.length;i+=4){const n=(Math.random()-0.5)*30;noiseData.data[i]+=n;noiseData.data[i+1]+=n;noiseData.data[i+2]+=n;}
+  lCtx.putImageData(noiseData,0,0);
+
+  const objects=[
+    {type:'rect',x:50,y:80,w:200,h:150,depth:0.25,color:'#e94560'},
+    {type:'circle',cx:450,cy:180,r:80,depth:0.55,color:'#00e5a0'},
+    {type:'rect',x:250,y:250,w:220,h:140,depth:0.75,color:'#f59e0b'},
+    {type:'circle',cx:160,cy:360,r:60,depth:0.9,color:'#3b82f6'},
+    {type:'rect',x:400,y:320,w:180,h:120,depth:0.45,color:'#8b5cf6'},
+  ];
+  objects.forEach(obj=>{
+    lCtx.fillStyle=obj.color;lCtx.shadowColor='rgba(0,0,0,0.5)';lCtx.shadowBlur=12;
+    if(obj.type==='rect'){lCtx.fillRect(obj.x,obj.y,obj.w,obj.h);lCtx.shadowBlur=0;for(let i=0;i<30;i++){lCtx.fillStyle=`rgba(255,255,255,${Math.random()*0.15})`;lCtx.fillRect(obj.x+Math.random()*obj.w,obj.y+Math.random()*obj.h,4+Math.random()*8,4+Math.random()*8);}}
+    else{lCtx.beginPath();lCtx.arc(obj.cx,obj.cy,obj.r,0,Math.PI*2);lCtx.fill();lCtx.shadowBlur=0;for(let i=0;i<20;i++){const a=Math.random()*Math.PI*2,d=Math.random()*obj.r*0.8;lCtx.fillStyle=`rgba(255,255,255,${Math.random()*0.15})`;lCtx.fillRect(obj.cx+Math.cos(a)*d,obj.cy+Math.sin(a)*d,3+Math.random()*6,3+Math.random()*6);}}
+  });
+  lCtx.shadowBlur=0;
+
+  const leftImageData=lCtx.getImageData(0,0,W,H);
+  const depthMap=new Float32Array(W*H);depthMap.fill(0.1);
+  objects.forEach(obj=>{if(obj.type==='rect'){for(let y=obj.y;y<obj.y+obj.h&&y<H;y++)for(let x=obj.x;x<obj.x+obj.w&&x<W;x++)if(y>=0&&x>=0)depthMap[y*W+x]=obj.depth;}else{for(let y=Math.max(0,obj.cy-obj.r);y<Math.min(H,obj.cy+obj.r);y++)for(let x=Math.max(0,obj.cx-obj.r);x<Math.min(W,obj.cx+obj.r);x++){const dx=x-obj.cx,dy=y-obj.cy;if(dx*dx+dy*dy<=obj.r*obj.r)depthMap[y*W+x]=obj.depth;}}});
+
+  const rightImageData=new ImageData(W,H);const maxShift=40;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const shift=Math.round(depthMap[y*W+x]*maxShift);const srcX=x+shift;if(srcX>=0&&srcX<W){const di=(y*W+x)*4,si=(y*W+srcX)*4;rightImageData.data[di]=leftImageData.data[si];rightImageData.data[di+1]=leftImageData.data[si+1];rightImageData.data[di+2]=leftImageData.data[si+2];rightImageData.data[di+3]=255;}}
+
+  const rCanvas=document.createElement('canvas');rCanvas.width=W;rCanvas.height=H;rCanvas.getContext('2d').putImageData(rightImageData,0,0);
+  const leftImg=new Image(),rightImg=new Image();let loaded=0;
+  const onReady=()=>{if(++loaded===2){state.leftImg=leftImg;state.rightImg=rightImg;updateDropPreview('left',leftImg);updateDropPreview('right',rightImg);updateStereoView();}};
+  leftImg.onload=onReady;rightImg.onload=onReady;leftImg.src=lCanvas.toDataURL();rightImg.src=rCanvas.toDataURL();
+};
+
+// ============================================================
+// Стерео просмотр
+// ============================================================
+function updateStereoView(){if(!state.leftImg||!state.rightImg)return;document.getElementById('stereoEmpty').style.display='none';document.getElementById('stereoContent').style.display='block';renderStereo();}
+function setStereoMode(mode){state.stereoMode=mode;renderStereo();}
+window.setStereoMode=setStereoMode;
+
+function renderStereo(){
+  if(!state.leftImg||!state.rightImg)return;const canvas=document.getElementById('stereoCanvas'),ctx=canvas.getContext('2d');
+  const lw=state.leftImg.width,lh=state.leftImg.height,rw=state.rightImg.width,rh=state.rightImg.height;
+  if(state.stereoMode==='side'){canvas.width=lw+rw;canvas.height=Math.max(lh,rh);ctx.drawImage(state.leftImg,0,0);ctx.drawImage(state.rightImg,lw,0);}
+  else if(state.stereoMode==='anaglyph'){canvas.width=lw;canvas.height=lh;ctx.drawImage(state.leftImg,0,0);const ld=ctx.getImageData(0,0,lw,lh);ctx.drawImage(state.rightImg,0,0);const rd=ctx.getImageData(0,0,lw,lh);const out=ctx.createImageData(lw,lh);for(let i=0;i<out.data.length;i+=4){out.data[i]=ld.data[i];out.data[i+1]=rd.data[i+1];out.data[i+2]=rd.data[i+2];out.data[i+3]=255;}ctx.putImageData(out,0,0);}
+  else if(state.stereoMode==='left'){canvas.width=lw;canvas.height=lh;ctx.drawImage(state.leftImg,0,0);}
+  else{canvas.width=rw;canvas.height=rh;ctx.drawImage(state.rightImg,0,0);}
+}
+
+// ============================================================
+// Цветовые карты
+// ============================================================
+const colormaps={
+  jet:t=>{t=Math.max(0,Math.min(1,t));let r,g,b;if(t<0.25){r=0;g=4*t;b=1;}else if(t<0.5){r=0;g=1;b=1-4*(t-0.25);}else if(t<0.75){r=4*(t-0.5);g=1;b=0;}else{r=1;g=1-4*(t-0.75);b=0;}return[r*255|0,g*255|0,b*255|0];},
+  viridis:t=>{t=Math.max(0,Math.min(1,t));return[Math.max(0,Math.min(255,(-1.26+9.52*t-12.8*t*t+5.94*t*t*t)*255))|0,Math.max(0,Math.min(255,(0.0316+2.07*t-3.46*t*t+2.36*t*t*t)*255))|0,Math.max(0,Math.min(255,(1.14-3.63*t+8.14*t*t-5.49*t*t*t)*255))|0];},
+  grayscale:t=>{t=Math.max(0,Math.min(1,t));const v=t*255|0;return[v,v,v];}
+};
+
+// ============================================================
+// Вычисление глубины
+// ============================================================
+window.startCompute=async function(){
+  if(state.computing)return;if(!state.leftImg||!state.rightImg){showToast('Загрузите оба изображения!');return;}
+  state.computing=true;const btn=document.getElementById('btnCompute');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Вычисление...';document.getElementById('computeStatus').textContent='Подготовка...';setProgress(0);
+  try{
+    const method=document.getElementById('method').value,maxDisp=parseInt(document.getElementById('maxDisp').value),blockSize=parseInt(document.getElementById('blockSize').value),scaleFactor=parseInt(document.getElementById('scale').value),doSubpixel=document.getElementById('filterSubpixel').checked,doConsistency=document.getElementById('filterConsistency').checked,doMedian=document.getElementById('filterMedian').checked,doSpeckle=document.getElementById('filterSpeckle').checked;
+    const lw=state.leftImg.width,lh=state.leftImg.height,rw=state.rightImg.width,rh=state.rightImg.height;const pw=Math.round(Math.min(lw,rw)/scaleFactor),ph=Math.round(Math.min(lh,rh)/scaleFactor);
+    const leftGrey=await imageToGrey(state.leftImg,pw,ph),rightGrey=await imageToGrey(state.rightImg,pw,ph),leftRGBA=await imageToRGBA(state.leftImg,pw,ph);
+    state.imgWidth=pw;state.imgHeight=ph;state.leftGrey=leftGrey;state.rightGrey=rightGrey;state.leftData=leftRGBA;
+    document.getElementById('computeStatus').textContent=`Вычисление (${pw}x${ph})...`;setProgress(0.05);await yieldToUI();
+
+    let disparity;
+    if(method==='census'){const lc=censusTransform(leftGrey,pw,ph),rc=censusTransform(rightGrey,pw,ph);disparity=await computeDisparityCensus(lc,rc,pw,ph,maxDisp,blockSize,doSubpixel);}
+    else{disparity=await computeDisparitySAD(leftGrey,rightGrey,pw,ph,maxDisp,blockSize,doSubpixel);}
+    state.disparityWidth=pw;state.disparityHeight=ph;
+
+    if(doConsistency){document.getElementById('computeStatus').textContent='LR-консистентность...';setProgress(0.7);await yieldToUI();const rightDisp=method==='census'?await computeDisparityCensusRL(state.rightGrey,state.leftGrey,pw,ph,maxDisp,blockSize):await computeDisparitySADRL(state.rightGrey,state.leftGrey,pw,ph,maxDisp,blockSize);applyConsistencyCheck(disparity,rightDisp,pw,ph,maxDisp);}
+    if(doMedian){document.getElementById('computeStatus').textContent='Медианный фильтр...';setProgress(0.8);await yieldToUI();disparity=medianFilter(disparity,pw,ph);}
+    if(doSpeckle){document.getElementById('computeStatus').textContent='Удаление спеклов...';setProgress(0.85);await yieldToUI();removeSpeckles(disparity,pw,ph,100,maxDisp);}
+
+    state.disparity=disparity;const depth=new Float32Array(pw*ph);for(let i=0;i<depth.length;i++)depth[i]=disparity[i]>0?1.0/disparity[i]:0;state.depth=depth;
+    document.getElementById('computeStatus').textContent='Визуализация...';setProgress(0.95);await yieldToUI();
+    renderDepthMap();buildPointCloud();build3DModel();setProgress(1.0);document.getElementById('computeStatus').textContent='Готово!';showToast('Вычисление завершено!');
+    document.getElementById('btnPly').disabled=false;document.getElementById('btnObj').disabled=false;document.getElementById('btnDepth').disabled=false;document.getElementById('btnDisp').disabled=false;
+    document.querySelector('[data-tab="depth"]').click();
+  }catch(err){console.error(err);document.getElementById('computeStatus').textContent='Ошибка';}finally{state.computing=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-play"></i> Вычислить глубину';setTimeout(()=>setProgress(0),3000);}
+};
+
+async function imageToGrey(img,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);const d=ctx.getImageData(0,0,w,h).data;const g=new Uint8Array(w*h);for(let i=0;i<g.length;i++)g[i]=(d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114)|0;return g;}
+async function imageToRGBA(img,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);return ctx.getImageData(0,0,w,h).data;}
+
+// ============================================================
+// Алгоритмы SAD / Census
+// ============================================================
+async function computeDisparitySAD(lG,rG,w,h,mD,bS,sub){const half=(bS/2)|0,disp=new Float32Array(w*h),costs=new Float32Array(mD),CHUNK=4;for(let sY=half;sY<h-half;sY+=CHUNK){const eY=Math.min(sY+CHUNK,h-half);for(let y=sY;y<eY;y++){for(let x=half;x<w-half;x++){let bD=0,bC=1e9,sB=1e9;for(let d=0;d<mD;d++){if(x-d-half<0){costs[d]=1e9;continue;}let c=0;for(let dy=-half;dy<=half;dy++){const rL=(y+dy)*w;for(let dx=-half;dx<=half;dx++)c+=Math.abs(lG[rL+x+dx]-rG[rL+x+dx-d]);}costs[d]=c;if(c<bC){sB=bC;bC=c;bD=d;}else if(c<sB)sB=c;}if(bC>sB*0.95){disp[y*w+x]=0;continue;}if(sub&&bD>0&&bD<mD-1){const c0=costs[bD-1],c1=costs[bD],c2=costs[bD+1],dn=2*(c0-2*c1+c2);disp[y*w+x]=Math.abs(dn)>1e-6?bD+(c0-c2)/dn:bD;}else disp[y*w+x]=bD;}}setProgress(0.05+0.6*((eY-half)/(h-2*half)));await yieldToUI();}return disp;}
+async function computeDisparitySADRL(rG,lG,w,h,mD,bS){const half=(bS/2)|0,disp=new Float32Array(w*h),CHUNK=4;for(let sY=half;sY<h-half;sY+=CHUNK){const eY=Math.min(sY+CHUNK,h-half);for(let y=sY;y<eY;y++){for(let x=half;x<w-half;x++){let bD=0,bC=1e9;for(let d=0;d<mD;d++){if(x+d+half>=w)continue;let c=0;for(let dy=-half;dy<=half;dy++){const r=(y+dy)*w;for(let dx=-half;dx<=half;dx++)c+=Math.abs(rG[r+x+dx]-lG[r+x+dx+d]);}if(c<bC){bC=c;bD=d;}}disp[y*w+x]=bD;}}await yieldToUI();}return disp;}
+function censusTransform(g,w,h){const c=new Uint32Array(w*h);for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){let b=0,bi=0;const cv=g[y*w+x];for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){if(dy===0&&dx===0)continue;if(g[(y+dy)*w+(x+dx)]<cv)b|=(1<<bi);bi++;}c[y*w+x]=b;}return c;}
+function popcount(n){n=n-((n>>1)&0x55555555);n=(n&0x33333333)+((n>>2)&0x33333333);return(((n+(n>>4))&0x0F0F0F0F)*0x01010101)>>24;}
+async function computeDisparityCensus(lC,rC,w,h,mD,bS,sub){const half=(bS/2)|0,disp=new Float32Array(w*h),costs=new Float32Array(mD),CHUNK=4;for(let sY=half;sY<h-half;sY+=CHUNK){const eY=Math.min(sY+CHUNK,h-half);for(let y=sY;y<eY;y++){for(let x=half;x<w-half;x++){let bD=0,bC=1e9,sB=1e9;for(let d=0;d<mD;d++){if(x-d-half<0){costs[d]=1e9;continue;}let c=0;for(let dy=-half;dy<=half;dy++){const r=(y+dy)*w;for(let dx=-half;dx<=half;dx++)c+=popcount(lC[r+x+dx]^rC[r+x+dx-d]);}costs[d]=c;if(c<bC){sB=bC;bC=c;bD=d;}else if(c<sB)sB=c;}if(bC>sB*0.95){disp[y*w+x]=0;continue;}if(sub&&bD>0&&bD<mD-1){const c0=costs[bD-1],c1=costs[bD],c2=costs[bD+1],dn=2*(c0-2*c1+c2);disp[y*w+x]=Math.abs(dn)>1e-6?bD+(c0-c2)/dn:bD;}else disp[y*w+x]=bD;}}setProgress(0.05+0.6*((eY-half)/(h-2*half)));await yieldToUI();}return disp;}
+async function computeDisparityCensusRL(rG,lG,w,h,mD,bS){const lC=censusTransform(lG,w,h),rC=censusTransform(rG,w,h),half=(bS/2)|0,disp=new Float32Array(w*h),CHUNK=4;for(let sY=half;sY<h-half;sY+=CHUNK){const eY=Math.min(sY+CHUNK,h-half);for(let y=sY;y<eY;y++){for(let x=half;x<w-half;x++){let bD=0,bC=1e9;for(let d=0;d<mD;d++){if(x+d+half>=w)continue;let c=0;for(let dy=-half;dy<=half;dy++){const r=(y+dy)*w;for(let dx=-half;dx<=half;dx++)c+=popcount(rC[r+x+dx]^lC[r+x+dx+d]);}if(c<bC){bC=c;bD=d;}}disp[y*w+x]=bD;}}await yieldToUI();}return disp;}
+
+// Фильтры
+function applyConsistencyCheck(dL,dR,w,h,mD){for(let y=0;y<h;y++)for(let x=0;x<w;x++){const d=dL[y*w+x];if(d<=0)continue;const rx=Math.round(x-d);if(rx<0||rx>=w){dL[y*w+x]=0;continue;}if(Math.abs(d-dR[y*w+rx])>2)dL[y*w+x]=0;}}
+function medianFilter(disparity,w,h){const out=new Float32Array(disparity.length),win=[-1,0,1];for(let y=0;y<h;y++)for(let x=0;x<w;x++){const vals=[];for(const dy of win)for(const dx of win){const ny=y+dy,nx=x+dx;if(ny>=0&&ny<h&&nx>=0&&nx<w){const v=disparity[ny*w+nx];if(v>0)vals.push(v);}}if(vals.length>0){vals.sort((a,b)=>a-b);out[y*w+x]=vals[vals.length>>1];}}return out;}
+function removeSpeckles(disparity,w,h,maxS,mD){const visited=new Uint8Array(w*h),stack=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++){const idx=y*w+x;if(visited[idx]||disparity[idx]<=0)continue;const region=[];stack.push(idx);visited[idx]=1;const ref=disparity[idx];while(stack.length>0){const ci=stack.pop();region.push(ci);const cy=(ci/w)|0,cx=ci%w;const nb=[cy>0?ci-w:-1,cy<h-1?ci+w:-1,cx>0?ci-1:-1,cx<w-1?ci+1:-1];for(const ni of nb){if(ni<0||visited[ni])continue;if(Math.abs(disparity[ni]-ref)<2){visited[ni]=1;stack.push(ni);}}}if(region.length<maxS)for(const ri of region)disparity[ri]=0;}}
+
+// ============================================================
+// Визуализация глубины
+// ============================================================
+function renderDepthMap(){
+  if(!state.disparity)return;document.getElementById('depthEmpty').style.display='none';document.getElementById('depthContent').style.display='block';
+  const w=state.disparityWidth,h=state.disparityHeight,canvas=document.getElementById('depthCanvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d'),imgData=ctx.createImageData(w,h);
+  let minD=Infinity,maxD=-Infinity;for(let i=0;i<state.disparity.length;i++){if(state.disparity[i]>0){minD=Math.min(minD,state.disparity[i]);maxD=Math.max(maxD,state.disparity[i]);}}
+  if(minD===Infinity){minD=0;maxD=1;}const range=maxD-minD||1;const colorFn=colormaps.jet;
+  for(let i=0;i<state.disparity.length;i++){const d=state.disparity[i],pi=i*4;if(d<=0){imgData.data[pi]=255;imgData.data[pi+1]=255;imgData.data[pi+2]=255;imgData.data[pi+3]=255;}else{const[r,g,b]=colorFn((d-minD)/range);imgData.data[pi]=r;imgData.data[pi+1]=g;imgData.data[pi+2]=b;imgData.data[pi+3]=255;}}
+  ctx.putImageData(imgData,0,0);const vp=state.disparity.filter(d=>d>0).length;document.getElementById('depthStats').innerHTML=`Заполнено: ${(vp/state.disparity.length*100).toFixed(1)}% | Дисп: ${minD.toFixed(1)} - ${maxD.toFixed(1)}`;
+}
+
+// ============================================================
+// Облако точек (Three.js)
+// ============================================================
+function buildPointCloud() {
+  if(!state.disparity||!state.leftData)return;
+  cleanup3D('pc'); // Очистка старой сцены
+  document.getElementById('pcEmpty').style.display='none'; document.getElementById('pcContent').style.display='block';
+  const container=document.getElementById('pcContent');
+  const w=state.disparityWidth,h=state.disparityHeight;
+  const scene=new THREE.Scene(); scene.background=new THREE.Color(0x008080);
+  const camera=new THREE.PerspectiveCamera(60,container.clientWidth/container.clientHeight,0.01,1000); camera.position.set(0,0,5);
+  const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(container.clientWidth,container.clientHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  container.appendChild(renderer.domElement);
+  const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=0.2; controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN};
+  
+  if(document.getElementById('showAxes').checked)scene.add(new THREE.AxesHelper(2));
+  if(document.getElementById('showGrid').checked)scene.add(new THREE.GridHelper(10,20,0x808080,0xc0c0c0));
+  scene.add(new THREE.AmbientLight(0xffffff,0.8));
+
+  const step=Math.max(1,Math.floor(Math.sqrt(w*h/150000)));const positions=[],colors=[];
+  let maxDisp=0;for(let i=0;i<state.disparity.length;i++)if(state.disparity[i]>maxDisp)maxDisp=state.disparity[i];maxDisp=Math.max(maxDisp,1);
+  for(let y=0;y<h;y+=step){for(let x=0;x<w;x+=step){const idx=y*w+x;const d=state.disparity[idx];if(d<=0)continue;
+    positions.push((x/w-0.5)*8,-(y/h-0.5)*8*(h/w),(d/maxDisp)*3);
+    const ci=idx*4;colors.push(state.leftData[ci]/255,state.leftData[ci+1]/255,state.leftData[ci+2]/255);
+  }}
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  const pointSize=parseFloat(document.getElementById('pointSize').value);
+  const material=new THREE.PointsMaterial({size:pointSize*0.02,vertexColors:true,sizeAttenuation:true});
+  scene.add(new THREE.Points(geometry,material));
+
+  state.pcScene=scene;state.pcCamera=camera;state.pcRenderer=renderer;state.pcControls=controls;
+  function animate(){state.pcAnimId=requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+  animate();
+}
+
+function resizePCViewer(){if(!state.pcRenderer)return;const c=document.getElementById('pcContent');state.pcRenderer.setSize(c.clientWidth,c.clientHeight);state.pcCamera.aspect=c.clientWidth/c.clientHeight;state.pcCamera.updateProjectionMatrix();}
+
+// ============================================================
+// 3D Модель (Mesh)
+// ============================================================
+function build3DModel() {
+  if(!state.disparity||!state.leftData)return;
+  cleanup3D('model'); // Очистка старой сцены
+  document.getElementById('modelEmpty').style.display='none'; document.getElementById('modelContent').style.display='block';
+  const container=document.getElementById('modelContent');
+  const w=state.disparityWidth,h=state.disparityHeight;
+  const scene=new THREE.Scene(); scene.background=new THREE.Color(0x008080);
+  const camera=new THREE.PerspectiveCamera(60,container.clientWidth/container.clientHeight,0.01,1000); camera.position.set(0,0,5);
+  const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(container.clientWidth,container.clientHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  container.appendChild(renderer.domElement);
+  const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=0.2; controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN};
+
+  if(document.getElementById('showAxes').checked)scene.add(new THREE.AxesHelper(2));
+  if(document.getElementById('showGrid').checked)scene.add(new THREE.GridHelper(10,20,0x808080,0xc0c0c0));
+  scene.add(new THREE.AmbientLight(0xffffff,0.6));
+  const dirLight=new THREE.DirectionalLight(0xffffff,0.8);dirLight.position.set(5,5,5);scene.add(dirLight);
+
+  const segX=Math.min(w,300),segY=Math.min(h,300),geoW=8,geoH=8*(h/w);
+  const geometry=new THREE.PlaneGeometry(geoW,geoH,segX,segY);const pos=geometry.attributes.position,uvs=geometry.attributes.uv;
+  let maxDisp=0;for(let i=0;i<state.disparity.length;i++)if(state.disparity[i]>maxDisp)maxDisp=state.disparity[i];maxDisp=Math.max(maxDisp,1);
+
+  for(let iy=0;iy<=segY;iy++){for(let ix=0;ix<=segX;ix++){const vIdx=iy*(segX+1)+ix;const u=uvs.getX(vIdx),v=uvs.getY(vIdx);
+    const px=Math.min(Math.floor(u*w),w-1),py=Math.min(Math.floor((1-v)*h),h-1);const d=state.disparity[py*w+px];
+    pos.setZ(vIdx,d>0?(d/maxDisp)*3:0);
+  }}
+  geometry.computeVertexNormals();
+
+  const texCanvas=document.createElement('canvas');texCanvas.width=w;texCanvas.height=h;
+  const texCtx=texCanvas.getContext('2d');const texImgData=texCtx.createImageData(w,h);texImgData.data.set(state.leftData);texCtx.putImageData(texImgData,0,0);
+  const texture=new THREE.CanvasTexture(texCanvas);texture.minFilter=THREE.LinearFilter;
+
+  const wireframe=document.getElementById('showWireframe').checked;
+  const material=new THREE.MeshStandardMaterial({map:texture,side:THREE.DoubleSide,wireframe:wireframe,roughness:0.6,metalness:0.1});
+  scene.add(new THREE.Mesh(geometry,material));
+
+  state.modelScene=scene;state.modelCamera=camera;state.modelRenderer=renderer;state.modelControls=controls;state.modelMaterial=material;
+  function animate(){state.modelAnimId=requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+  animate();
+}
+
+function resizeModelViewer(){if(!state.modelRenderer)return;const c=document.getElementById('modelContent');state.modelRenderer.setSize(c.clientWidth,c.clientHeight);state.modelCamera.aspect=c.clientWidth/c.clientHeight;state.modelCamera.updateProjectionMatrix();}
+
+// ============================================================
+// UI Привязки
+// ============================================================
+function bindSlider(s,v){const sl=document.getElementById(s),vl=document.getElementById(v);sl.addEventListener('input',()=>{vl.textContent=sl.value;});}
+bindSlider('maxDisp','maxDispVal');bindSlider('blockSize','blockSizeVal');
+document.getElementById('scale').addEventListener('input',e=>{document.getElementById('scaleVal').textContent=`1/${e.target.value}`;});
+document.getElementById('pointSize').addEventListener('input',e=>{document.getElementById('pointSizeVal').textContent=parseFloat(e.target.value).toFixed(1);if(state.pcScene){const p=state.pcScene.children.find(c=>c instanceof THREE.Points);if(p){p.material.size=parseFloat(e.target.value)*0.02;p.material.needsUpdate=true;}}});
+document.getElementById('showWireframe').addEventListener('change',e=>{if(state.modelMaterial){state.modelMaterial.wireframe=e.target.checked;state.modelMaterial.needsUpdate=true;}});
+document.getElementById('showAxes').addEventListener('change',()=>{if(state.disparity){buildPointCloud();build3DModel();}});
+document.getElementById('showGrid').addEventListener('change',()=>{if(state.disparity){buildPointCloud();build3DModel();}});
+
+// ============================================================
+// Экспорт
+// ============================================================
+window.exportPLY=function(){if(!state.disparity)return;const w=state.disparityWidth,h=state.disparityHeight;let mD=0;for(let i=0;i<state.disparity.length;i++)if(state.disparity[i]>mD)mD=state.disparity[i];mD=Math.max(mD,1);const step=Math.max(1,Math.floor(Math.sqrt(w*h/300000)));const verts=[];
+for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){const idx=y*w+x,d=state.disparity[idx];if(d<=0)continue;const ci=idx*4;verts.push(`${(x/w-0.5)} ${-(y/h-0.5)} ${d/mD} ${state.leftData[ci]} ${state.leftData[ci+1]} ${state.leftData[ci+2]}`);}
+let ply=`ply\nformat ascii 1.0\nelement vertex ${verts.length}\nproperty float x\nproperty float y\nproperty float z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nend_header\n`;ply+=verts.join('\n');
+downloadFile(ply,'pointcloud.ply','text/plain');showToast(`Экспорт PLY: ${verts.length} точек`);};
+
+window.exportOBJ=function(){if(!state.disparity)return;const w=state.disparityWidth,h=state.disparityHeight,sX=Math.min(w,150),sY=Math.min(h,150);let mD=0;for(let i=0;i<state.disparity.length;i++)if(state.disparity[i]>mD)mD=state.disparity[i];mD=Math.max(mD,1);let obj=`# Stereo Depth OBJ\n`;
+for(let iy=0;iy<=sY;iy++)for(let ix=0;ix<=sX;ix++){const u=ix/sX,v=iy/sY;const px=u-0.5,py=-(v-0.5);const imgX=Math.min(Math.floor(u*w),w-1),imgY=Math.min(Math.floor(v*h),h-1);const d=state.disparity[imgY*w+imgX];obj+=`v ${px.toFixed(4)} ${py.toFixed(4)} ${(d>0?d/mD:0).toFixed(4)}\n`;}
+for(let iy=0;iy<=sY;iy++)for(let ix=0;ix<=sX;ix++)obj+=`vt ${(ix/sX).toFixed(4)} ${(1-iy/sY).toFixed(4)}\n`;
+for(let iy=0;iy<sY;iy++)for(let ix=0;ix<sX;ix++){const a=iy*(sX+1)+ix+1,b=a+1,c=(iy+1)*(sX+1)+ix+1,d=c+1;obj+=`f ${a}/${a} ${b}/${b} ${d}/${d}\nf ${a}/${a} ${d}/${d} ${c}/${c}\n`;}
+downloadFile(obj,'model.obj','text/plain');showToast('3D модель экспортирована в OBJ');};
+
+window.exportDepthMap=function(){if(!state.depth)return;const w=state.disparityWidth,h=state.disparityHeight,c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);let mD=0;for(let i=0;i<state.depth.length;i++)mD=Math.max(mD,state.depth[i]);mD=Math.max(mD,1e-6);for(let i=0;i<state.depth.length;i++){const v=state.depth[i]>0?Math.min(255,(state.depth[i]/mD)*255):0;img.data[i*4]=v;img.data[i*4+1]=v;img.data[i*4+2]=v;img.data[i*4+3]=255;}ctx.putImageData(img,0,0);c.toBlob(b=>{const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='depth.png';a.click();URL.revokeObjectURL(u);});showToast('Карта глубины экспортирована');};
+window.exportDisparity=function(){if(!state.disparity)return;const c=document.getElementById('depthCanvas');c.toBlob(b=>{const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='disparity.png';a.click();URL.revokeObjectURL(u);});showToast('Карта диспаратности экспортирована');};
+
+function downloadFile(c,f,t){const b=new Blob([c],{type:t}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=f;a.click();URL.revokeObjectURL(u);}
+
+// Окна Win98 сообщения
+function showToast(msg) {
+  const t=document.createElement('div');t.className='modal-overlay';
+  t.innerHTML=`<div class="win98-window raised" style="width:300px;"><div class="win98-titlebar"><span class="win98-titlebar-text"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Сообщение</span><div class="win98-titlebar-controls"><button class="win98-titlebar-btn" onclick="this.closest('.modal-overlay').remove()">X</button></div></div><div class="win98-window-body inset" style="background:#fff; padding: 20px; display:flex; align-items:center; gap:15px;"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAN9SURBVFhH7ZZNaBNBFMd/M5t0bBvUuhWi1lZQQakerIF6sCKi0n8QiAPExx8QeFQ8qHhRvAg6FooXxeKtYKF2rVJbbNJtaPXHmE+bNDRNcycZ3LtwO7u1+bbZzO4HtPPx/3nfP/3uAcK/UC9Y8wew2r9hgX3G9DbCHXTx+pgEphoYPMBqP4RzIPkPzjdgH4Q7YKcfvCUxU4J9YDSGxSdgG4y2Evjz/lwQbgOwT8J9sNIOaEzCfcB8i+Dez9/YoIzQOwT8J9MN4IuE3CfSBuA/CeRT9gn4T7INwH4b4I98G4P8J9EO6DcB+E+yDcB+G+eIj3/xoeOHMIb3/Ch9fAcTDmADh2ADwGxwOwEcBxNswBsAHAcbKPD+Ap4DYI6gj1PgPnILMN1icMBsAdcBsEdYR6H4HzENkG6xMHA3APnAbBHWEeh+B8xB5BucTBwNwD5wGwR1hHofgfMQuQbnEwcDcA+cBsEdYR6H4HzELkG5xMHA3APnAbBHWEeh+B8xC5BucTBwNwD5wGwR1hHofgfMQ+QbnEwcDcA+cBsEdYR6H4HzEPkG5xMHA3APnAbBHWEeh+B8xD5BucTBANwDpwOwRVRHqPdTMIwMg2/APkHVH1jfMPgQqgAAAABJRU5ErkJggg==" alt="info" style="width:32px; height:32px;"><span>${msg}</span></div><div style="padding: 8px; display: flex; justify-content: flex-end; border-top: 1px solid #808080;"><button class="btn-98" onclick="this.closest('.modal-overlay').remove()" style="min-width: 75px;">OK</button></div></div>`;
+  document.body.appendChild(t);
+  t.addEventListener('click',e=>{if(e.target===t)t.remove();});
+  setTimeout(()=>t.remove(), 4000);
+}
+
+window.addEventListener('resize',()=>{resizePCViewer();resizeModelViewer();});
+window.addEventListener('orientationchange',()=>{setTimeout(()=>{resizePCViewer();resizeModelViewer();},300);});
+</script>
+</body>
+</html>
