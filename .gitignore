@@ -1,3 +1,1 @@
-(simulations/sandbox/ contains only source files (.html, .js) - no build artifacts, dependencies, or temp files to ignore)
-
-Nothing to output.
+Nothing should be ignored since only a README.md file was modified and no build artifacts, dependencies, or temporary files were present in the changes.
