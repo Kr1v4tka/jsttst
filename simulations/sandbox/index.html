@@ -3,107 +3,472 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Песочница с физикой</title>
+    <title>Физическая Песочница Pro</title>
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        .sandbox-container {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            height: 100vh;
+        }
+        
+        /* Боковая панель */
+        .sidebar {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 10;
         }
         
-        #canvas {
-            border: 1px solid #ccc;
-            background-color: #f5f5f5;
-            cursor: crosshair;
-            margin-bottom: 20px;
+        .sidebar-header {
+            margin-bottom: 25px;
         }
         
-        .controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 15px;
+        .sidebar-header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-header p {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
         }
         
         .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        
+        .slider-container {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-        
-        button {
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        button:hover {
-            background-color: #45a049;
-        }
-        
-        button.clear {
-            background-color: #f44336;
-        }
-        
-        button.clear:hover {
-            background-color: #da190b;
-        }
-        
-        label {
-            font-size: 14px;
-            color: #333;
+            gap: 10px;
         }
         
         input[type="range"] {
-            width: 100px;
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            outline: none;
         }
         
-        .info {
-            text-align: center;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .value-display {
+            min-width: 50px;
+            text-align: right;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 13px;
+        }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-full {
+            grid-column: span 2;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item span {
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .stats-panel {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            font-size: 13px;
             color: #666;
-            font-size: 14px;
-            max-width: 600px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        /* Основная область */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .toolbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 5;
+        }
+        
+        .tool-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #f0f0f0;
+            border: 2px solid transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .tool-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .tool-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        .overlay-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+        }
+        
+        .overlay-info div {
+            margin-bottom: 5px;
+        }
+        
+        .help-tooltip {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 40vh;
+                order: 2;
+            }
+            
+            .main-area {
+                order: 1;
+            }
+            
+            .btn-group {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="sandbox-container">
-        <h1>Песочница с физикой</h1>
-        
-        <div class="controls">
-            <button id="addBall">Добавить шар</button>
-            <button id="addBox">Добавить коробку</button>
-            <button id="clear" class="clear">Очистить</button>
-            
-            <div class="control-group">
-                <label for="gravity">Гравитация:</label>
-                <input type="range" id="gravity" min="0" max="20" value="9.8" step="0.1">
-                <span id="gravityValue">9.8</span>
+    <div class="app-container">
+        <!-- Боковая панель -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔬 Физическая Песочница</h1>
+                <p>Профессиональный симулятор физики</p>
             </div>
             
-            <div class="control-group">
-                <label for="bounce">Отскок:</label>
-                <input type="range" id="bounce" min="0" max="1" value="0.7" step="0.05">
-                <span id="bounceValue">0.7</span>
+            <div class="section">
+                <div class="section-title">Объекты</div>
+                <div class="btn-group">
+                    <button class="btn-primary" id="addBall">
+                        <span>⚽</span> Шар
+                    </button>
+                    <button class="btn-primary" id="addBox">
+                        <span>📦</span> Куб
+                    </button>
+                    <button class="btn-secondary" id="addTriangle">
+                        <span>🔺</span> Треугольник
+                    </button>
+                    <button class="btn-secondary" id="addStack">
+                        <span>🏗️</span> Башня
+                    </button>
+                    <button class="btn-secondary btn-full" id="addRain">
+                        <span>🌧️</span> Дождь
+                    </button>
+                    <button class="btn-danger btn-full" id="clear">
+                        <span>🗑️</span> Очистить всё
+                    </button>
+                </div>
             </div>
-        </div>
+            
+            <div class="section">
+                <div class="section-title">Параметры физики</div>
+                
+                <div class="control-group">
+                    <label for="gravity">Гравитация (м/с²)</label>
+                    <div class="slider-container">
+                        <input type="range" id="gravity" min="-20" max="20" value="9.8" step="0.1">
+                        <span class="value-display" id="gravityValue">9.8</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="bounce">Упругость</label>
+                    <div class="slider-container">
+                        <input type="range" id="bounce" min="0" max="1" value="0.7" step="0.05">
+                        <span class="value-display" id="bounceValue">0.70</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="friction">Трение</label>
+                    <div class="slider-container">
+                        <input type="range" id="friction" min="0.9" max="1" value="0.99" step="0.01">
+                        <span class="value-display" id="frictionValue">0.99</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="timeScale">Масштаб времени</label>
+                    <div class="slider-container">
+                        <input type="range" id="timeScale" min="0.1" max="2" value="1" step="0.1">
+                        <span class="value-display" id="timeScaleValue">1.0x</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Опции</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showStats" checked>
+                        <span>Показать статистику</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showGrid" checked>
+                        <span>Сетка фона</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="particles" checked>
+                        <span>Эффекты частиц</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="sleepEnabled" checked>
+                        <span>Сон объектов</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <span class="stat-label">Объектов:</span>
+                    <span class="stat-value" id="statObjects">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Частиц:</span>
+                    <span class="stat-value" id="statParticles">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Соединений:</span>
+                    <span class="stat-value" id="statJoints">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">FPS:</span>
+                    <span class="stat-value" id="statFps">60</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Коллизии:</span>
+                    <span class="stat-value" id="statCollisions">0</span>
+                </div>
+            </div>
+        </aside>
         
-        <canvas id="canvas" width="800" height="500"></canvas>
-        
-        <div class="info">
-            <p>Левый клик: добавить объект | Правый клик: удалить ближайший объект | Перетаскивание: перемещение объектов</p>
-        </div>
-        
-        <div style="margin-top: 20px;">
-            <a href="../../index.html" style="color: #2196F3; text-decoration: none;">← Вернуться к списку симуляций</a>
-        </div>
+        <!-- Основная область -->
+        <main class="main-area">
+            <div class="toolbar">
+                <div class="tool-buttons">
+                    <button class="tool-btn active" id="toolSelect" title="Выделение">👆</button>
+                    <button class="tool-btn" id="toolSpawn" title="Создать объект">➕</button>
+                    <button class="tool-btn" id="toolDestroy" title="Удалить объект">💥</button>
+                    <button class="tool-btn" id="toolFreeze" title="Заморозить">❄️</button>
+                    <button class="tool-btn" id="toolJoint" title="Создать соединение">🔗</button>
+                </div>
+                <div>
+                    <button class="btn-secondary" id="pauseBtn">⏸️ Пауза</button>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+                <div class="overlay-info" id="overlayInfo">
+                    <div>🎯 Объектов: <span id="infoObjects">0</span></div>
+                    <div>🔗 Соединений: <span id="infoJoints">0</span></div>
+                    <div>✨ Частиц: <span id="infoParticles">0</span></div>
+                    <div>⚡ FPS: <span id="infoFps">60</span></div>
+                </div>
+                <div class="help-tooltip">
+                    ЛКМ: создать/перетащить | ПКМ: удалить | Инструмент "Соединение": клик-клик для связи
+                </div>
+            </div>
+        </main>
     </div>
     
     <script src="physics.js"></script>
