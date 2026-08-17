@@ -1,1 +1,16 @@
-Nothing should be ignored since only a README.md file was modified and no build artifacts, dependencies, or temporary files were present in the changes.
+# Examples and temporary files
+simulations/sandbox/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
