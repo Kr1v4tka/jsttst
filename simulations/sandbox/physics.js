@@ -336,12 +336,14 @@ class PhysicsEngine {
         this.damping = 0.999;
         this.objects = [];
         this.particles = [];
+        this.joints = [];
         this.width = width;
         this.height = height;
         this.spatialGrid = null;
         this.cellSize = 50;
         this.iterations = 8;
         this.sleepThreshold = 0.1;
+        this.lastCollisionCount = 0;
     }
 
     addObject(obj) {
@@ -361,7 +363,20 @@ class PhysicsEngine {
     clear() {
         this.objects = [];
         this.particles = [];
+        this.joints = [];
         this.spatialGrid = null;
+    }
+
+    addJoint(joint) {
+        this.joints.push(joint);
+        return joint;
+    }
+
+    removeJoint(id) {
+        const index = this.joints.findIndex(j => j.id === id);
+        if (index !== -1) {
+            this.joints.splice(index, 1);
+        }
     }
 
     spawnParticles(x, y, count, color) {
@@ -452,11 +467,21 @@ class PhysicsEngine {
 
         // Решаем коллизии
         const pairs = this.getPotentialCollisions();
+        let collisionCount = 0;
         for (let i = 0; i < this.iterations; i++) {
             for (const [obj1, obj2] of pairs) {
                 if (this.checkCollision(obj1, obj2)) {
                     this.resolveCollision(obj1, obj2);
+                    collisionCount++;
                 }
+            }
+        }
+        this.lastCollisionCount = collisionCount;
+
+        // Решаем соединения
+        for (let i = 0; i < 5; i++) {
+            for (const joint of this.joints) {
+                joint.resolve();
             }
         }
 
@@ -791,6 +816,11 @@ class PhysicsEngine {
         for (const obj of this.objects) {
             obj.draw(ctx);
         }
+
+        // Рисуем соединения
+        for (const joint of this.joints) {
+            joint.draw(ctx);
+        }
     }
 }
 
@@ -813,4 +843,165 @@ function createRectangle(x, y, width, height, static = false) {
         rect.momentOfInertia = Infinity;
     }
     return rect;
+}
+
+class Joint {
+    constructor(obj1, obj2, anchor1, anchor2, length = null, stiffness = 0.8) {
+        this.obj1 = obj1;
+        this.obj2 = obj2;
+        this.anchor1 = anchor1 || new Vector2(0, 0);
+        this.anchor2 = anchor2 || new Vector2(0, 0);
+        
+        if (length === null) {
+            const worldPos1 = obj1.position.add(this.getLocalPoint(obj1, this.anchor1));
+            const worldPos2 = obj2.position.add(this.getLocalPoint(obj2, this.anchor2));
+            this.length = worldPos1.distance(worldPos2);
+        } else {
+            this.length = length;
+        }
+        
+        this.stiffness = stiffness;
+        this.id = Date.now() + Math.random();
+    }
+    
+    getLocalPoint(obj, worldAnchor) {
+        const local = worldAnchor.sub(obj.position);
+        const cos = Math.cos(-obj.angle);
+        const sin = Math.sin(-obj.angle);
+        return new Vector2(local.x * cos - local.y * sin, local.x * sin + local.y * cos);
+    }
+    
+    getWorldAnchor(obj, localAnchor) {
+        const cos = Math.cos(obj.angle);
+        const sin = Math.sin(obj.angle);
+        return obj.position.add(new Vector2(
+            localAnchor.x * cos - localAnchor.y * sin,
+            localAnchor.x * sin + localAnchor.y * cos
+        ));
+    }
+    
+    resolve() {
+        const pos1 = this.getWorldAnchor(this.obj1, this.anchor1);
+        const pos2 = this.getWorldAnchor(this.obj2, this.anchor2);
+        
+        const delta = pos2.sub(pos1);
+        const dist = delta.magnitude();
+        if (dist < 0.001) return;
+        
+        const diff = delta.multiply((dist - this.length) / dist);
+        const correction = diff.multiply(this.stiffness);
+        
+        if (!this.obj1.static) {
+            this.obj1.position = this.obj1.position.sub(correction.multiply(this.obj1.invMass / (this.obj1.invMass + this.obj2.invMass)));
+        }
+        if (!this.obj2.static) {
+            this.obj2.position = this.obj2.position.add(correction.multiply(this.obj2.invMass / (this.obj1.invMass + this.obj2.invMass)));
+        }
+    }
+    
+    draw(ctx) {
+        const pos1 = this.getWorldAnchor(this.obj1, this.anchor1);
+        const pos2 = this.getWorldAnchor(this.obj2, this.anchor2);
+        
+        ctx.beginPath();
+        ctx.moveTo(pos1.x, pos1.y);
+        ctx.lineTo(pos2.x, pos2.y);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Рисуем точки крепления
+        ctx.beginPath();
+        ctx.arc(pos1.x, pos1.y, 4, 0, Math.PI * 2);
+        ctx.arc(pos2.x, pos2.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 200, 100, 0.8)';
+        ctx.fill();
+    }
+}
+
+class Polygon extends PhysicsObject {
+    constructor(x, y, vertices) {
+        super(x, y, 'polygon');
+        this.vertices = vertices; // Вершины относительно центра
+        this.computeProperties();
+    }
+
+    computeProperties() {
+        // Вычисляем площадь и момент инерции для произвольного многоугольника
+        let area = 0;
+        let momentSum = 0;
+        const n = this.vertices.length;
+
+        for (let i = 0; i < n; i++) {
+            const v1 = this.vertices[i];
+            const v2 = this.vertices[(i + 1) % n];
+            const cross = v1.x * v2.y - v1.y * v2.x;
+            area += cross;
+            momentSum += (v1.x * v1.x + v1.y * v1.y + v1.x * v2.x + v1.y * v2.y + v2.x * v2.x + v2.y * v2.y) * cross;
+        }
+
+        area = Math.abs(area) / 2;
+        this.mass = area * 0.001;
+        this.invMass = this.static ? 0 : 1 / this.mass;
+        this.momentOfInertia = Math.abs(momentSum) / 12 * 0.001;
+        if (this.static) this.momentOfInertia = Infinity;
+    }
+
+    getWorldVertices() {
+        const cos = Math.cos(this.angle);
+        const sin = Math.sin(this.angle);
+        
+        return this.vertices.map(v => {
+            return new Vector2(
+                this.position.x + v.x * cos - v.y * sin,
+                this.position.y + v.x * sin + v.y * cos
+            );
+        });
+    }
+
+    getBounds() {
+        const vertices = this.getWorldVertices();
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        for (const v of vertices) {
+            minX = Math.min(minX, v.x);
+            maxX = Math.max(maxX, v.x);
+            minY = Math.min(minY, v.y);
+            maxY = Math.max(maxY, v.y);
+        }
+
+        return { left: minX, right: maxX, top: minY, bottom: maxY };
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this.angle);
+
+        // Основная фигура
+        ctx.beginPath();
+        ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Линии от центра к вершинам
+        ctx.beginPath();
+        for (const v of this.vertices) {
+            ctx.moveTo(0, 0);
+            ctx.lineTo(v.x, v.y);
+        }
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.restore();
+    }
 }

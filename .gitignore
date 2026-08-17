@@ -1,3 +1,3 @@
-# No changes needed - only source/config files were modified
+(simulations/sandbox/ contains only source files (.html, .js) - no build artifacts, dependencies, or temp files to ignore)
 
-The modified files (README.md, index.html) are source/config files and should not be ignored. No build artifacts, dependencies, or temporary files were detected in the changes.
+Nothing to output.
