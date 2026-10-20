@@ -1,528 +1,248 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physics & Graphics Simulations</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --dark-bg: #1a1a2e;
-            --card-bg: #ffffff;
-            --text-primary: #2d3748;
-            --text-secondary: #718096;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f7fafc;
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-        
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            background: var(--dark-bg);
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%);
-            animation: pulse 8s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.1); }
-        }
-        
-        .hero-content {
-            text-align: center;
-            z-index: 1;
-            padding: 40px 20px;
-        }
-        
-        .hero-title {
-            font-size: clamp(2.5rem, 5vw, 4.5rem);
-            font-weight: 700;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 20px;
-            animation: fadeInUp 1s ease-out;
-        }
-        
-        .hero-subtitle {
-            font-size: clamp(1.1rem, 2vw, 1.4rem);
-            color: #e2e8f0;
-            max-width: 600px;
-            margin: 0 auto 40px;
-            animation: fadeInUp 1s ease-out 0.2s both;
-        }
-        
-        .hero-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            animation: fadeInUp 1s ease-out 0.4s both;
-        }
-        
-        .hero-btn {
-            padding: 16px 32px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1rem;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .hero-btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        }
-        
-        .hero-btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
-        }
-        
-        .hero-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .hero-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-3px);
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Floating shapes */
-        .floating-shape {
-            position: absolute;
-            border-radius: 50%;
-            animation: float 20s infinite ease-in-out;
-            opacity: 0.1;
-        }
-        
-        .shape-1 {
-            width: 300px;
-            height: 300px;
-            background: var(--primary-gradient);
-            top: 10%;
-            left: 5%;
-            animation-delay: 0s;
-        }
-        
-        .shape-2 {
-            width: 200px;
-            height: 200px;
-            background: var(--secondary-gradient);
-            bottom: 20%;
-            right: 10%;
-            animation-delay: -5s;
-        }
-        
-        .shape-3 {
-            width: 150px;
-            height: 150px;
-            background: var(--accent-gradient);
-            top: 50%;
-            right: 20%;
-            animation-delay: -10s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(20px, -30px) rotate(90deg); }
-            50% { transform: translate(-20px, 20px) rotate(180deg); }
-            75% { transform: translate(30px, -10px) rotate(270deg); }
-        }
-        
-        /* Simulations Section */
-        .simulations-section {
-            padding: 100px 20px;
-            background: white;
-        }
-        
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
-        
-        .section-title {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 15px;
-        }
-        
-        .section-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
-        .simulations-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .simulation-card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .simulation-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--primary-gradient);
-            transform: scaleX(0);
-            transition: transform 0.4s ease;
-        }
-        
-        .simulation-card:hover::before {
-            transform: scaleX(1);
-        }
-        
-        .simulation-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
-        }
-        
-        .card-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 20px;
-        }
-        
-        .icon-physics {
-            background: var(--primary-gradient);
-        }
-        
-        .icon-stereo {
-            background: var(--secondary-gradient);
-        }
-        
-        .icon-depth {
-            background: var(--accent-gradient);
-        }
-        
-        .simulation-card h3 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-        
-        .simulation-card p {
-            color: var(--text-secondary);
-            margin-bottom: 25px;
-            line-height: 1.7;
-        }
-        
-        .card-features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 25px;
-        }
-        
-        .feature-tag {
-            padding: 6px 12px;
-            background: #edf2f7;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        
-        .card-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 24px;
-            background: var(--primary-gradient);
-            color: white;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-        
-        .card-link:hover {
-            transform: translateX(5px);
-            text-decoration: none;
-        }
-        
-        /* Stats Section */
-        .stats-section {
-            padding: 80px 20px;
-            background: var(--dark-bg);
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 40px;
-            max-width: 1000px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        
-        .stat-item h4 {
-            font-size: 3rem;
-            font-weight: 700;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
-        
-        .stat-item p {
-            color: #a0aec0;
-            font-size: 1rem;
-        }
-        
-        /* Footer */
-        .footer {
-            background: #1a1a2e;
-            color: #a0aec0;
-            padding: 40px 20px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .footer a:hover {
-            text-decoration: underline;
-        }
-        
-        /* Scroll indicator */
-        .scroll-indicator {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            animation: bounce 2s infinite;
-        }
-        
-        .scroll-indicator svg {
-            width: 30px;
-            height: 30px;
-            fill: rgba(255, 255, 255, 0.5);
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
-            40% { transform: translateX(-50%) translateY(-10px); }
-            60% { transform: translateX(-50%) translateY(-5px); }
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .hero-btn {
-                width: 100%;
-                max-width: 280px;
-                justify-content: center;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Коллекция интерактивных симуляций на чистом JavaScript: 2D-физика твёрдых тел и стереозрение с построением карт глубины.">
+  <title>JS Simulations — физика и стереозрение</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="floating-shape shape-1"></div>
-        <div class="floating-shape shape-2"></div>
-        <div class="floating-shape shape-3"></div>
-        
-        <div class="hero-content">
-            <h1 class="hero-title">Physics & Graphics<br>Simulations</h1>
-            <p class="hero-subtitle">Интерактивная коллекция физических симуляций и графических демонстраций на JavaScript</p>
-            <div class="hero-buttons">
-                <a href="#simulations" class="hero-btn hero-btn-primary">
-                    <span>🚀</span> Начать исследование
-                </a>
-                <a href="README.md" class="hero-btn hero-btn-secondary">
-                    <span>📖</span> Документация
-                </a>
-            </div>
+  <a class="skip-link" href="#simulations">Перейти к симуляциям</a>
+
+  <!-- ============ Hero ============ -->
+  <header class="hero">
+    <canvas class="hero__canvas" id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero__glow" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <a class="nav__brand" href="./index.html">
+        <span class="nav__mark">JS</span>
+        <span class="nav__name">Simulations</span>
+      </a>
+      <div class="nav__links">
+        <a href="#simulations">Симуляции</a>
+        <a href="#stack">Технологии</a>
+        <a href="https://github.com/Kr1v4tka/jsttst" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </nav>
+
+    <div class="hero__inner">
+      <p class="hero__eyebrow">
+        <span class="dot"></span>
+        Чистый JavaScript · без сборки · без зависимостей
+      </p>
+
+      <h1 class="hero__title">
+        Физика и стереозрение<br>
+        <span class="hero__title-accent">в браузере</span>
+      </h1>
+
+      <p class="hero__lead">
+        Две интерактивные лаборатории: песочница с настоящим импульсным решателем
+        твёрдых тел и стерео-оценщик глубины, который превращает пару фотографий
+        в облако точек и 3D-модель.
+      </p>
+
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="simulations/sandbox/index.html">
+          Открыть песочницу
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn btn--ghost" href="demo/index.html">
+          Стерео-глубина
+        </a>
+      </div>
+
+      <dl class="hero__metrics">
+        <div>
+          <dt>Шаг физики</dt>
+          <dd>120 Гц</dd>
         </div>
-        
-        <div class="scroll-indicator">
-            <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        <div>
+          <dt>Алгоритмы</dt>
+          <dd>SAD · Census · ZNCC</dd>
         </div>
-    </section>
-    
-    <!-- Simulations Section -->
-    <section id="simulations" class="simulations-section">
-        <div class="section-header">
-            <h2 class="section-title">Доступные симуляции</h2>
-            <p class="section-subtitle">Выберите интересующую вас симуляцию и погрузитесь в мир интерактивной физики</p>
+        <div>
+          <dt>Тесты</dt>
+          <dd id="metricTests">—</dd>
         </div>
-        
-        <div class="simulations-grid">
-            <div class="simulation-card">
-                <div class="card-icon icon-physics">⚛️</div>
-                <h3>Песочница с физикой</h3>
-                <p>Интерактивная физическая песочница с поддержкой гравитации, столкновений и взаимодействия с объектами в реальном времени.</p>
-                <div class="card-features">
-                    <span class="feature-tag">Гравитация</span>
-                    <span class="feature-tag">Коллизии</span>
-                    <span class="feature-tag">Частицы</span>
-                    <span class="feature-tag">Вращение</span>
-                </div>
-                <a href="simulations/sandbox/index.html" class="card-link">Запустить →</a>
-            </div>
-            
-            <div class="simulation-card">
-                <div class="card-icon icon-stereo">👁️</div>
-                <h3>Стерео-глубина</h3>
-                <p>Вычисление карты глубины из стереопары изображений с использованием алгоритмов компьютерного зрения.</p>
-                <div class="card-features">
-                    <span class="feature-tag">SAD Matching</span>
-                    <span class="feature-tag">Census Transform</span>
-                    <span class="feature-tag">3D Point Cloud</span>
-                    <span class="feature-tag">Экспорт PLY/OBJ</span>
-                </div>
-                <a href="demo/Stereo.html" class="card-link">Запустить →</a>
-            </div>
-            
-            <div class="simulation-card">
-                <div class="card-icon icon-depth">🎯</div>
-                <h3>Скоро появится</h3>
-                <p>Новые симуляции в разработке: трассировка лучей, симуляция жидкости, система частиц и многое другое.</p>
-                <div class="card-features">
-                    <span class="feature-tag">Ray Tracing</span>
-                    <span class="feature-tag">Fluid Sim</span>
-                    <span class="feature-tag">Cloth Physics</span>
-                </div>
-                <a href="#" class="card-link" style="background: #e2e8f0; cursor: default;">В разработке 🔜</a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Stats Section -->
-    <section class="stats-section">
-        <div class="stats-grid">
-            <div class="stat-item">
-                <h4>800+</h4>
-                <p>Строк кода физики</p>
-            </div>
-            <div class="stat-item">
-                <h4>60 FPS</h4>
-                <p>Плавная анимация</p>
-            </div>
-            <div class="stat-item">
-                <h4>100%</h4>
-                <p>Чистый JavaScript</p>
-            </div>
-            <div class="stat-item">
-                <h4>∞</h4>
-                <p>Возможностей</p>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Physics & Graphics Simulations © 2024</p>
-        <p style="margin-top: 10px;">
-            <a href="README.md">Документация</a> • 
-            <a href="#">GitHub</a> • 
-            <a href="#">Лицензия</a>
+      </dl>
+    </div>
+  </header>
+
+  <!-- ============ Симуляции ============ -->
+  <main>
+    <section class="section" id="simulations">
+      <div class="section__head">
+        <p class="section__eyebrow">Лаборатории</p>
+        <h2 class="section__title">Выберите симуляцию</h2>
+        <p class="section__lead">
+          Каждая — самостоятельное приложение. Открывается в браузере без установки
+          и сборки: достаточно локального статического сервера.
         </p>
-    </footer>
-    
-    <script>
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-        
-        // Parallax effect for floating shapes
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            document.querySelectorAll('.floating-shape').forEach((shape, index) => {
-                const speed = 0.1 + (index * 0.05);
-                shape.style.transform = `translateY(${scrolled * speed}px)`;
-            });
-        });
-    </script>
+      </div>
+
+      <div class="cards">
+        <!-- Песочница -->
+        <article class="card card--physics">
+          <div class="card__visual">
+            <canvas class="card__canvas" id="previewPhysics" aria-hidden="true"></canvas>
+            <span class="card__badge">Интерактивно</span>
+          </div>
+          <div class="card__body">
+            <h3 class="card__title">Физическая песочница</h3>
+            <p class="card__text">
+              Твёрдые тела с вращением, столкновения через SAT, соединения-пружины,
+              сон объектов и система частиц. Всё считается в браузере на фиксированном шаге.
+            </p>
+            <ul class="card__tags">
+              <li>SAT + клиппинг</li>
+              <li>Warm starting</li>
+              <li>Соединения</li>
+              <li>Частицы</li>
+            </ul>
+            <a class="card__link" href="simulations/sandbox/index.html">
+              Запустить
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <!-- Стерео -->
+        <article class="card card--stereo">
+          <div class="card__visual">
+            <canvas class="card__canvas" id="previewStereo" aria-hidden="true"></canvas>
+            <span class="card__badge">Computer Vision</span>
+          </div>
+          <div class="card__body">
+            <h3 class="card__title">Стерео-глубина</h3>
+            <p class="card__text">
+              Плотная карта диспаратности из стереопары: блочное сопоставление,
+              субпиксельное уточнение, LR-проверка и медианная фильтрация.
+              Результат — облако точек и 3D-меш.
+            </p>
+            <ul class="card__tags">
+              <li>SAD / Census / ZNCC</li>
+              <li>LR-проверка</li>
+              <li>Point cloud</li>
+              <li>PLY / OBJ</li>
+            </ul>
+            <a class="card__link" href="demo/index.html">
+              Запустить
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ Технологии ============ -->
+    <section class="section section--alt" id="stack">
+      <div class="section__head">
+        <p class="section__eyebrow">Под капотом</p>
+        <h2 class="section__title">Как это устроено</h2>
+      </div>
+
+      <div class="stack">
+        <div class="stack__col">
+          <h3>Физический движок</h3>
+          <ul class="stack__list">
+            <li><b>Интегратор</b> — полунеявный Эйлер на фиксированном шаге 1/120 с</li>
+            <li><b>Широкая фаза</b> — uniform spatial hash по AABB</li>
+            <li><b>Узкая фаза</b> — SAT для полигонов с клиппингом опорной грани</li>
+            <li><b>Решатель</b> — sequential impulses с накоплением и warm starting</li>
+            <li><b>Коррекция</b> — позиционная, по локальным якорям контакта</li>
+            <li><b>Оптимизация</b> — сон тел и пул частиц</li>
+          </ul>
+        </div>
+
+        <div class="stack__col">
+          <h3>Стереозрение</h3>
+          <ul class="stack__list">
+            <li><b>Метрики</b> — SAD, Census Transform, ZNCC</li>
+            <li><b>Уточнение</b> — параболическая интерполяция диспаратности</li>
+            <li><b>Отбраковка</b> — порог уникальности и LR-консистентность</li>
+            <li><b>Постобработка</b> — медиана, удаление спеклов, заполнение дыр</li>
+            <li><b>3D</b> — облако точек и меш на Three.js</li>
+            <li><b>Экспорт</b> — PLY, OBJ, PNG-карты</li>
+          </ul>
+        </div>
+
+        <div class="stack__col">
+          <h3>Инженерия</h3>
+          <ul class="stack__list">
+            <li><b>Модули</b> — нативные ES-модули, без сборщика</li>
+            <li><b>Тесты</b> — <code>node --test</code>, 45 проверок</li>
+            <li><b>Движок</b> — не зависит от DOM, тестируется в Node.js</li>
+            <li><b>Доступность</b> — клавиатура, ARIA, reduced-motion</li>
+            <li><b>Адаптив</b> — тач и мышь через Pointer Events</li>
+            <li><b>Сервер</b> — встроенный статический сервер на Node.js</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Запуск ============ -->
+    <section class="section" id="run">
+      <div class="section__head">
+        <p class="section__eyebrow">Быстрый старт</p>
+        <h2 class="section__title">Запуск за одну минуту</h2>
+      </div>
+
+      <div class="run">
+        <div class="run__step">
+          <span class="run__num">1</span>
+          <h3>Клонируйте репозиторий</h3>
+          <pre><code>git clone https://github.com/Kr1v4tka/jsttst.git
+cd jsttst</code></pre>
+        </div>
+
+        <div class="run__step">
+          <span class="run__num">2</span>
+          <h3>Запустите сервер</h3>
+          <pre><code>npm run dev</code></pre>
+          <p class="run__note">Без npm: <code>python -m http.server 8080</code></p>
+        </div>
+
+        <div class="run__step">
+          <span class="run__num">3</span>
+          <h3>Откройте в браузере</h3>
+          <pre><code>http://localhost:8080</code></pre>
+          <p class="run__note">
+            Открытие через <code>file://</code> не сработает: браузер заблокирует
+            ES-модули из-за CORS.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ Footer ============ -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="nav__mark">JS</span>
+        <div>
+          <p class="footer__name">JS Simulations</p>
+          <p class="footer__copy">MIT License · 2026</p>
+        </div>
+      </div>
+
+      <nav class="footer__links" aria-label="Ссылки в подвале">
+        <a href="simulations/sandbox/index.html">Песочница</a>
+        <a href="demo/index.html">Стерео-глубина</a>
+        <a href="https://github.com/Kr1v4tka/jsttst" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/Kr1v4tka/jsttst/blob/main/README.md" target="_blank" rel="noopener noreferrer">Документация</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="./js/hub.js"></script>
 </body>
 </html>

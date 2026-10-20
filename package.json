@@ -1,0 +1,27 @@
+{
+  "name": "jsttst",
+  "version": "2.0.0",
+  "description": "Коллекция интерактивных симуляций на чистом JavaScript: 2D-физика и стереозрение",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node tools/serve.js",
+    "start": "node tools/serve.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "lint": "node tools/check.js",
+    "check:browser": "node tools/browser-check.mjs",
+    "verify": "node tools/check.js && node --test \"tests/**/*.test.js\""
+  },
+  "keywords": [
+    "javascript",
+    "physics",
+    "canvas",
+    "simulation",
+    "stereo-vision",
+    "depth-map"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

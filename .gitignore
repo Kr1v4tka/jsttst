@@ -1,16 +1,28 @@
-# Examples and temporary files
-simulations/sandbox/
-
-# Logs and temp files
+# Логи и временные файлы
 *.log
 *.tmp
 *.swp
+*~
 
-# Environment
+# Окружение и секреты
 .env
-.env.local
 .env.*
+!.env.example
 
-# Editors
+# Редакторы и ОС
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+
+# Зависимости (проект их не использует, но пусть не попадут случайно)
+node_modules/
+package-lock.json
+
+# Артефакты сборки
+dist/
+build/
+
+# Отладочные скрипты
+tmp-*.mjs
+tmp-*.js

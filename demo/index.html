@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Вычисление карты глубины из стереопары: SAD, Census, ZNCC, LR-проверка, облако точек и 3D-модель.">
+  <title>Stereo Depth Estimator — Windows 98</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁️</text></svg>">
+  <link rel="stylesheet" href="./css/stereo.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<div class="desktop">
+  <!-- ================= Боковая панель ================= -->
+  <aside class="window sidebar" id="sidebar">
+    <div class="titlebar">
+      <span class="titlebar__text"><span class="glyph">⚙</span>Параметры вычисления</span>
+      <div class="titlebar__controls">
+        <button class="titlebar__btn" type="button" id="btnHelp" title="Справка" aria-label="Справка">?</button>
+        <button class="titlebar__btn" type="button" id="btnReset" title="Сбросить" aria-label="Сбросить">✕</button>
+      </div>
+    </div>
+
+    <div class="window__body">
+      <!-- 1. Изображения -->
+      <fieldset class="group">
+        <legend>1. Изображения</legend>
+        <div class="drops">
+          <div class="dropzone" id="dropLeft" tabindex="0" role="button" aria-label="Загрузить левое изображение">
+            <div class="dropzone__placeholder" id="placeholderLeft">
+              <span class="glyph glyph--big">🖼</span>
+              <span>Левое</span>
+            </div>
+          </div>
+          <div class="dropzone" id="dropRight" tabindex="0" role="button" aria-label="Загрузить правое изображение">
+            <div class="dropzone__placeholder" id="placeholderRight">
+              <span class="glyph glyph--big">🖼</span>
+              <span>Правое</span>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="fileLeft" accept="image/*" hidden>
+        <input type="file" id="fileRight" accept="image/*" hidden>
+        <button class="btn btn--wide" type="button" id="btnDemo">
+          <span class="glyph">✨</span>Сгенерировать демо
+        </button>
+      </fieldset>
+
+      <!-- 2. Алгоритм -->
+      <fieldset class="group">
+        <legend>2. Алгоритм</legend>
+
+        <label class="param">
+          <span class="param__label">Метод</span>
+          <select class="input" id="method">
+            <option value="sad">SAD Block Matching</option>
+            <option value="census">Census Transform</option>
+            <option value="zncc">ZNCC</option>
+          </select>
+        </label>
+
+        <div class="param">
+          <div class="param__row">
+            <span class="param__label">Макс. диспаратность</span>
+            <output class="param__value" id="maxDispVal">64</output>
+          </div>
+          <input class="range" type="range" id="maxDisp" min="16" max="128" step="4" value="64">
+        </div>
+
+        <div class="param">
+          <div class="param__row">
+            <span class="param__label">Размер блока</span>
+            <output class="param__value" id="blockSizeVal">7</output>
+          </div>
+          <input class="range" type="range" id="blockSize" min="3" max="21" step="2" value="7">
+        </div>
+
+        <div class="param">
+          <div class="param__row">
+            <span class="param__label">Масштаб обработки</span>
+            <output class="param__value" id="scaleVal">1/4</output>
+          </div>
+          <input class="range" type="range" id="scale" min="1" max="4" step="1" value="4">
+        </div>
+
+        <div class="param">
+          <div class="param__row">
+            <span class="param__label">Порог уникальности</span>
+            <output class="param__value" id="uniqueVal">0.90</output>
+          </div>
+          <input class="range" type="range" id="uniqueRatio" min="0.5" max="1" step="0.01" value="0.9">
+        </div>
+      </fieldset>
+
+      <!-- 3. Фильтрация -->
+      <fieldset class="group">
+        <legend>3. Фильтрация</legend>
+        <label class="check"><input type="checkbox" id="filterSubpixel" checked><span>Субпиксельное уточнение</span></label>
+        <label class="check"><input type="checkbox" id="filterConsistency"><span>LR-консистентность</span></label>
+        <label class="check"><input type="checkbox" id="filterMedian" checked><span>Медианный фильтр</span></label>
+        <label class="check"><input type="checkbox" id="filterSpeckle"><span>Удаление спеклов</span></label>
+        <label class="check"><input type="checkbox" id="filterFill"><span>Заполнять дыры</span></label>
+      </fieldset>
+
+      <!-- 4. Визуализация -->
+      <fieldset class="group">
+        <legend>4. Визуализация</legend>
+
+        <label class="param">
+          <span class="param__label">Цветовая карта</span>
+          <select class="input" id="colormap">
+            <option value="turbo">Turbo</option>
+            <option value="viridis">Viridis</option>
+            <option value="grayscale">Оттенки серого</option>
+          </select>
+        </label>
+
+        <label class="check"><input type="checkbox" id="invertColors"><span>Инвертировать (ближе = темнее)</span></label>
+
+        <div class="param">
+          <div class="param__row">
+            <span class="param__label">Размер точки</span>
+            <output class="param__value" id="pointSizeVal">2.0</output>
+          </div>
+          <input class="range" type="range" id="pointSize" min="0.5" max="8" step="0.5" value="2">
+        </div>
+
+        <label class="check"><input type="checkbox" id="showWireframe"><span>Wireframe (3D модель)</span></label>
+        <label class="check"><input type="checkbox" id="showAxes" checked><span>Оси координат</span></label>
+        <label class="check"><input type="checkbox" id="showGrid"><span>Сетка</span></label>
+      </fieldset>
+
+      <!-- Вычисление -->
+      <div class="compute">
+        <button class="btn btn--primary btn--wide" type="button" id="btnCompute">
+          <span class="glyph">▶</span><span>Вычислить глубину</span>
+        </button>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
+          <div class="progress__fill" id="progressFill"></div>
+        </div>
+        <div class="compute__status" id="computeStatus">Ожидание…</div>
+      </div>
+
+      <!-- 5. Экспорт -->
+      <fieldset class="group">
+        <legend>5. Экспорт</legend>
+        <div class="grid2">
+          <button class="btn" type="button" id="btnPly" disabled>PLY</button>
+          <button class="btn" type="button" id="btnObj" disabled>OBJ</button>
+          <button class="btn" type="button" id="btnDepth" disabled>Глубина</button>
+          <button class="btn" type="button" id="btnDisp" disabled>Дисп.</button>
+        </div>
+      </fieldset>
+
+      <!-- Статистика -->
+      <fieldset class="group">
+        <legend>Статистика</legend>
+        <dl class="stats">
+          <div><dt>Разрешение</dt><dd id="statResolution">—</dd></div>
+          <div><dt>Покрытие</dt><dd id="statCoverage">—</dd></div>
+          <div><dt>Диапазон</dt><dd id="statRange">—</dd></div>
+          <div><dt>Время</dt><dd id="statTime">—</dd></div>
+        </dl>
+      </fieldset>
+    </div>
+  </aside>
+
+  <!-- ================= Основная область ================= -->
+  <main class="window workspace">
+    <div class="titlebar">
+      <span class="titlebar__text"><span class="glyph">🖥</span>Просмотр результатов</span>
+      <div class="titlebar__controls">
+        <a class="titlebar__btn" href="../index.html" title="На главную" aria-label="На главную">←</a>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="stereo" role="tab" aria-selected="true" type="button">Стерео</button>
+      <button class="tab" data-tab="depth" role="tab" aria-selected="false" type="button">Глубина</button>
+      <button class="tab" data-tab="pointcloud" role="tab" aria-selected="false" type="button">Точки</button>
+      <button class="tab" data-tab="model3d" role="tab" aria-selected="false" type="button">3D Модель</button>
+    </div>
+
+    <div class="views">
+      <!-- Стерео -->
+      <section class="view is-active" id="tab-stereo">
+        <div class="empty" id="stereoEmpty">
+          <span class="glyph glyph--huge">👓</span>
+          <p>Загрузите стерео-пару или сгенерируйте демо</p>
+        </div>
+        <div class="viewer" id="stereoContent" hidden>
+          <canvas id="stereoCanvas"></canvas>
+          <div class="viewer__bar">
+            <button class="btn" type="button" data-stereo-mode="side">Бок о бок</button>
+            <button class="btn" type="button" data-stereo-mode="anaglyph">Анаглиф</button>
+            <button class="btn" type="button" data-stereo-mode="left">Только L</button>
+            <button class="btn" type="button" data-stereo-mode="right">Только R</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Глубина -->
+      <section class="view" id="tab-depth">
+        <div class="empty" id="depthEmpty">
+          <span class="glyph glyph--huge">⛰</span>
+          <p>Вычислите глубину для отображения</p>
+        </div>
+        <div class="viewer" id="depthContent" hidden>
+          <canvas id="depthCanvas"></canvas>
+          <div class="viewer__badge" id="depthStats"></div>
+        </div>
+      </section>
+
+      <!-- Облако точек -->
+      <section class="view" id="tab-pointcloud">
+        <div class="empty" id="pcEmpty">
+          <span class="glyph glyph--huge">☁</span>
+          <p>Вычислите глубину для облака точек</p>
+        </div>
+        <div class="viewer viewer--3d" id="pcContent" hidden></div>
+      </section>
+
+      <!-- 3D Модель -->
+      <section class="view" id="tab-model3d">
+        <div class="empty" id="modelEmpty">
+          <span class="glyph glyph--huge">◧</span>
+          <p>Вычислите глубину для 3D модели</p>
+        </div>
+        <div class="viewer viewer--3d" id="modelContent" hidden></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ================= Таскбар ================= -->
+<div class="taskbar">
+  <button class="start" type="button" id="btnHelpBar"><span class="glyph">🪟</span>Справка</button>
+  <div class="taskbar__status"><span id="taskbarStatus">Готово</span></div>
+  <div class="taskbar__clock" id="clock">00:00</div>
+</div>
+
+<!-- ================= Диалоги ================= -->
+<div class="modal" id="helpModal" hidden>
+  <div class="window modal__window" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="titlebar">
+      <span class="titlebar__text" id="helpTitle"><span class="glyph">❓</span>Справка: Stereo Depth Estimator</span>
+      <div class="titlebar__controls">
+        <button class="titlebar__btn" type="button" data-close title="Закрыть" aria-label="Закрыть">✕</button>
+      </div>
+    </div>
+    <div class="window__body modal__body">
+      <h3>Что делает программа?</h3>
+      <p>Вычисляет карту глубины из двух фотографий одной сцены (стереопары), снятых с небольшим
+      горизонтальным смещением. По карте глубины строятся облако точек и 3D-модель.</p>
+
+      <h3>1. Загрузка изображений</h3>
+      <ul>
+        <li><b>Левое / Правое</b> — нажмите на область или перетащите файл. Левое фото снято левее.</li>
+        <li><b>Сгенерировать демо</b> — создаёт тестовую стереопару с объектами на разной глубине.</li>
+      </ul>
+
+      <h3>2. Алгоритм</h3>
+      <ul>
+        <li><b>SAD</b> — сумма абсолютных разностей. Быстрый, хорошо работает на текстурированных сценах.</li>
+        <li><b>Census</b> — сравнение структуры окрестности. Устойчив к перепадам освещения, медленнее.</li>
+        <li><b>ZNCC</b> — нормированная корреляция. Наиболее устойчив к изменению яркости и контраста.</li>
+        <li><b>Макс. диспаратность</b> — максимальный горизонтальный сдвиг в пикселях.</li>
+        <li><b>Размер блока</b> — окно сопоставления (нечётное). Больше блок — меньше шума, хуже детали.</li>
+        <li><b>Масштаб</b> — 1/1 полное разрешение (медленно), 1/4 рекомендуется.</li>
+        <li><b>Порог уникальности</b> — насколько лучший вариант должен превосходить второй.</li>
+      </ul>
+
+      <h3>3. Фильтрация</h3>
+      <ul>
+        <li><b>Субпиксельное уточнение</b> — параболическая интерполяция, убирает «ступеньки».</li>
+        <li><b>LR-консистентность</b> — отбрасывает пиксели, не подтверждённые обратным поиском.</li>
+        <li><b>Медианный фильтр</b> — убирает одиночные выбросы.</li>
+        <li><b>Удаление спеклов</b> — убирает мелкие изолированные островки.</li>
+        <li><b>Заполнять дыры</b> — заполняет оставшиеся пропуски медианой соседей.</li>
+      </ul>
+
+      <h3>4. Визуализация</h3>
+      <ul>
+        <li><b>Управление 3D</b> — ЛКМ/палец: вращение, ПКМ/два пальца: перемещение, колесо/щипок: масштаб.</li>
+        <li><b>Размер точки</b> — для облака точек.</li>
+        <li><b>Wireframe</b> — каркасный вид 3D-модели.</li>
+      </ul>
+
+      <h3>5. Экспорт</h3>
+      <ul>
+        <li><b>PLY</b> — облако точек с цветами (CloudCompare, MeshLab, Blender).</li>
+        <li><b>OBJ</b> — полигональная модель с UV-координатами.</li>
+        <li><b>Глубина / Дисп.</b> — карты в PNG.</li>
+      </ul>
+
+      <h3>Горячие клавиши</h3>
+      <ul>
+        <li><b>Ctrl+Enter</b> — вычислить, <b>1…4</b> — переключить вкладку, <b>Esc</b> — закрыть диалог.</li>
+      </ul>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--primary" type="button" data-close>OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="toastModal" hidden>
+  <div class="window modal__window modal__window--small" role="alertdialog" aria-modal="true">
+    <div class="titlebar">
+      <span class="titlebar__text"><span class="glyph">ℹ</span>Сообщение</span>
+      <div class="titlebar__controls">
+        <button class="titlebar__btn" type="button" data-close aria-label="Закрыть">✕</button>
+      </div>
+    </div>
+    <div class="window__body modal__body modal__body--toast">
+      <span class="glyph glyph--big">ℹ</span>
+      <span id="toastText"></span>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--primary" type="button" data-close>OK</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
